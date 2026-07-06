@@ -1,0 +1,52 @@
+{
+  "name": "@superwall/wizard",
+  "version": "0.1.0",
+  "description": "The Superwall wizard — set up Superwall in your app using your own coding agent.",
+  "keywords": [
+    "superwall",
+    "wizard",
+    "paywall",
+    "cli",
+    "setup",
+    "agent"
+  ],
+  "type": "module",
+  "bin": {
+    "superwall": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "package.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "dev": "tsx bin.ts",
+    "test": "tsx --test src/**/*.test.ts",
+    "link:global": "tsdown && pnpm link --global",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3",
+    "ink": "^5.2.1",
+    "ink-spinner": "^5.0.0",
+    "picocolors": "^1.1.1",
+    "react": "^18.3.1",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.31",
+    "@types/yargs": "^17.0.33",
+    "ink-testing-library": "^4.0.0",
+    "tsdown": "^0.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT"
+}
