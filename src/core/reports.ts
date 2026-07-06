@@ -1,10 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * Action reports are saved into the target app at `.superwall/<id>.md` so later
- * actions (e.g. implement) can read what an earlier action (e.g. review) found.
- */
+// Saved so a later action (e.g. implement) can read what an earlier one (e.g. review) found.
 function dir(appPath: string): string {
   return join(appPath, ".superwall");
 }

@@ -1,6 +1,5 @@
 import { Integration } from "@/constants";
 import type { Framework } from "./index";
-import { readPackageJson } from "./detect-helpers";
 
 export const webFramework: Framework = {
   integration: Integration.web,
@@ -8,12 +7,6 @@ export const webFramework: Framework = {
   supported: false,
   sdkPackage: "@superwall/web",
   docsUrl: "https://superwall.com/docs/web",
-
-  async detect(dir) {
-    // Lowest-confidence fallback: a JS project that isn't RN/Expo.
-    if (readPackageJson(dir)) return { score: 0.2 };
-    return { score: 0 };
-  },
 
   promptSnippet() {
     return [

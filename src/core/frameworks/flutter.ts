@@ -1,6 +1,5 @@
 import { Integration } from "@/constants";
 import type { Framework } from "./index";
-import { fileExists } from "./detect-helpers";
 
 export const flutterFramework: Framework = {
   integration: Integration.flutter,
@@ -8,11 +7,6 @@ export const flutterFramework: Framework = {
   supported: true,
   sdkPackage: "superwallkit_flutter",
   docsUrl: "https://superwall.com/docs/flutter",
-
-  async detect(dir) {
-    if (fileExists(dir, "pubspec.yaml")) return { score: 0.9 };
-    return { score: 0 };
-  },
 
   promptSnippet() {
     return [

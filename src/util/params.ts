@@ -1,17 +1,3 @@
-/**
- * Stripe/httpie-style `-d key=value` params → a nested JSON object.
- *
- * Because our JSON API is typed (some fields want strings, others numbers),
- * values are strings by default and you opt into a typed value with `:=`:
- *
- *   identifier=com.app.pro          → { identifier: "com.app.pro" }   (string)
- *   project_id=25607                → { project_id: "25607" }         (string)
- *   price[amount]:=4999             → { price: { amount: 4999 } }      (number)
- *   subscription[trial_period_days]:=7
- *   active:=true                    → { active: true }
- *   entitlements[0]=ent_123         → { entitlements: ["ent_123"] }
- *   items[0][price]=price_1         → { items: [{ price: "price_1" }] }
- */
 export function parseParams(pairs: string[] | undefined): Record<string, unknown> {
   const root: Record<string, unknown> = {};
   for (const pair of pairs ?? []) {

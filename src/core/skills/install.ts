@@ -1,7 +1,6 @@
 import { spawnStream } from "@/core/drivers/spawn";
 import { bundledSkillsDir } from "./bundled";
 
-/** The published Superwall skills source (github: owner/repo). */
 export const SUPERWALL_SKILLS_SOURCE = "superwall/skills";
 
 export interface SkillInfo {
@@ -9,11 +8,7 @@ export interface SkillInfo {
   summary: string;
 }
 
-/**
- * The skills published by superwall/skills. Kept here for display; the actual
- * set is resolved live by the `skills` CLI at install time, so new skills added
- * to the repo install automatically without a wizard release.
- */
+// For display only; the actual set is resolved live by the `skills` CLI at install time.
 export const KNOWN_SKILLS: SkillInfo[] = [
   {
     name: "superwall",
@@ -24,10 +19,8 @@ export const KNOWN_SKILLS: SkillInfo[] = [
 ];
 
 export interface InstallToolkitOptions {
-  /** Restrict to specific skills by name (default: all). */
   skills?: string[];
   cwd?: string;
-  /** Print the command instead of running it. */
   dryRun?: boolean;
   onProgress?: (line: string) => void;
 }
@@ -37,14 +30,6 @@ export interface InstallToolkitResult {
   command: string;
 }
 
-/**
- * Install the Superwall agent toolkit using the open `skills` CLI — the
- * gold-standard installer (canonical ~/.agents/skills + per-agent symlinks,
- * 67+ agents, copy fallback). Installs GLOBALLY so every agent on the machine
- * gets them, not just this project.
- *
- *   npx skills add superwall/skills --global --yes [--skill <name>...]
- */
 export async function installToolkit(opts: InstallToolkitOptions = {}): Promise<InstallToolkitResult> {
   const args = ["-y", "skills@latest", "add", SUPERWALL_SKILLS_SOURCE, "--global", "--yes"];
   if (opts.skills?.length) args.push("--skill", ...opts.skills);
@@ -62,12 +47,7 @@ export async function installToolkit(opts: InstallToolkitOptions = {}): Promise<
   return { ok: code === 0, command };
 }
 
-/**
- * Install the CLI's BUNDLED skills (integration / migration / placements) to
- * every installed agent, using the same `skills` CLI against the local `skills/`
- * dir. `--copy` so the skills live independently of this package's install path.
- * These are richer than the public toolkit and don't appear in its picker.
- */
+// `--copy` so the skills live independently of this package's install path.
 export async function installBundledSkills(opts: InstallToolkitOptions = {}): Promise<InstallToolkitResult> {
   const args = ["-y", "skills@latest", "add", bundledSkillsDir(), "--global", "--yes", "--copy"];
   const command = `npx ${args.join(" ")}`;

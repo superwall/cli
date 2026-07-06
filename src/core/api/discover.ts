@@ -6,14 +6,6 @@ export interface DiscoveredKey {
   app: Application;
 }
 
-/**
- * Find the app's public (pk_) SDK key from the logged-in org, so the pipeline
- * never has to prompt for it.
- *
- * - `bundleId` given and matched → that app.
- * - exactly one app in the org → that app.
- * - multiple and no match → returns null with the candidate list via `onMany`.
- */
 export async function discoverPublicApiKey(
   api: SuperwallApi,
   opts: { bundleId?: string; onMany?: (apps: Application[]) => Promise<Application | null> } = {},

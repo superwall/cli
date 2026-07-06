@@ -11,7 +11,6 @@ export interface RunActionOptions {
   signal?: AbortSignal;
 }
 
-/** Drive the chosen agent through one internal action (integrate, review, etc.). */
 export async function runAction(opts: RunActionOptions): Promise<AgentResult> {
   const prompt = buildActionPrompt(opts.action, opts.ctx);
   return opts.driver.run({

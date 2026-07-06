@@ -2,9 +2,9 @@ import type { Arguments } from "yargs";
 import { SuperwallApi } from "@/core/api/client";
 import { CONFIG_FILE, plan as planLocal, pull, push, readLocal, writeLocal } from "@/core/local";
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";
 
-/** `superwall <init|pull|plan|push>` — local-first Monetization-as-Code. */
 export function runLocal(command: "init" | "pull" | "plan" | "push"): (argv: Arguments) => Promise<void> {
   return defineCommand(async (ctx) => {
     const { installDir: dir, dryRun } = ctx;
@@ -31,24 +31,10 @@ export function runLocal(command: "init" | "pull" | "plan" | "push"): (argv: Arg
       return;
     }
 
-    // push
     if (nothing) return void ui.success("Up to date — nothing to create.");
     const done = await withSpinner("Pushing to Superwall", () => push(api, local));
     ui.success(`Pushed · created ${done.entitlements.length} entitlements, ${done.products.length} products`);
     for (const id of done.entitlements) ui.info(`+ entitlement ${id}`);
     for (const id of done.products) ui.info(`+ product ${id}`);
   });
-}
-
-async function withSpinner<T>(label: string, work: () => Promise<T>): Promise<T> {
-  const spin = ui.spinner();
-  spin.start(label);
-  try {
-    const result = await work();
-    spin.stop(label);
-    return result;
-  } catch (e) {
-    spin.stop("Failed");
-    throw e;
-  }
 }

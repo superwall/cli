@@ -27,21 +27,12 @@ import {
 import { getDefaultApp, setDefaultApp } from "@/core/config";
 import { defineCommand, type CommandContext } from "@/command";
 
-/** A resolved scope plus how many projects/apps exist (drives header labelling). */
 interface PickedScope extends Scope {
   appPlatform?: string;
   projectCount: number;
   appCount: number;
 }
 
-/**
- * Resolve the project and (for app-scoped commands) the application to act on.
- *
- * App selection, in priority order: `--app` flag → (interactive, >1 app) a
- * picker preselecting the remembered default → a single app → (plain, >1 app)
- * the remembered default or first. Interactive picks and explicit `--app` are
- * remembered per project so you're not asked again — switch with `--app`.
- */
 async function pickScope(ctx: CommandContext, api: SuperwallApi, appScoped: boolean): Promise<PickedScope> {
   const projects = await load(ctx, "Loading projects", listProjects(api));
   const projectFlag = ctx.argv.project as string | undefined;
@@ -58,19 +49,16 @@ async function pickScope(ctx: CommandContext, api: SuperwallApi, appScoped: bool
     const remembered = apps.find((a) => String(a.id) === getDefaultApp(projectId));
 
     if (appFlag) {
-      // Explicit one-off override — switch to it and remember it going forward.
       app = apps.find((a) => String(a.id) === appFlag || a.name === appFlag);
       if (!app) throw new Error(`No app ${appFlag} in ${project.name ?? projectId}.`);
       setDefaultApp(projectId, String(app.id));
     } else if (apps.length <= 1) {
       app = apps[0];
     } else if (remembered) {
-      // A default is set — use it silently (switch with `superwall apps use`).
       app = remembered;
     } else if (ctx.plain) {
       app = apps[0];
     } else {
-      // First time with multiple apps → ask once, then remember the choice.
       app = await chooseApp(ctx, apps, apps[0]!);
       setDefaultApp(projectId, String(app.id));
     }
@@ -87,7 +75,6 @@ async function pickScope(ctx: CommandContext, api: SuperwallApi, appScoped: bool
   };
 }
 
-/** `superwall <resource> [list|create|placement] [value] [value2]`. */
 export function runResource(resource: ResourceName): (argv: Arguments) => Promise<void> {
   return defineCommand(async (ctx) => {
     const action = (ctx.argv.action as string | undefined) ?? "list";
@@ -102,7 +89,6 @@ export function runResource(resource: ResourceName): (argv: Arguments) => Promis
   });
 }
 
-/** The "Which app?" picker, default preselected. Throws on cancel. */
 async function chooseApp(ctx: CommandContext, apps: Application[], def: Application): Promise<Application> {
   const sel = await ctx.ui.select({
     message: "Which app?",
@@ -113,7 +99,6 @@ async function chooseApp(ctx: CommandContext, apps: Application[], def: Applicat
   return apps.find((a) => String(a.id) === sel) ?? def;
 }
 
-/** `superwall apps use [<id|name>]` — set the default app for app-scoped commands. */
 async function doUse(ctx: CommandContext, api: SuperwallApi): Promise<void> {
   const { ui, argv } = ctx;
   const projects = await load(ctx, "Loading projects", listProjects(api));
@@ -138,7 +123,7 @@ async function doUse(ctx: CommandContext, api: SuperwallApi): Promise<void> {
   ui.success(`Default app set to \`${app.name ?? app.id}\` (${platformLabel(app.platform)})`);
 }
 
-/** Fetch with a spinner (skipped in JSON mode, which must emit only JSON). */
+// Skipped in JSON mode, which must emit only JSON.
 async function load<T>(ctx: CommandContext, label: string, work: Promise<T>): Promise<T> {
   if (ctx.json) return work;
   const spin = ctx.ui.spinner();
@@ -174,8 +159,7 @@ async function doList(ctx: CommandContext, api: SuperwallApi, resource: Resource
     return;
   }
 
-  // Projects are the unit; platforms (ios/android/…) are their apps, shown nested.
-  // `apps list` redirects here — there's no separate flat app list.
+  // `apps list` redirects here — there's no separate flat app list, apps are nested under projects.
   if (resource === "projects" || resource === "apps") {
     const projects = await load(ctx, "Loading projects", listProjects(api));
     if (json) return emit(projects);
@@ -208,7 +192,6 @@ async function doList(ctx: CommandContext, api: SuperwallApi, resource: Resource
   });
 }
 
-/** The id as dim secondary text — unless it's already the label (no echo). */
 function secondaryId(label: string, id: unknown): string | undefined {
   const s = String(id ?? "");
   return s && s !== label ? s : undefined;
@@ -219,8 +202,7 @@ async function doCreate(ctx: CommandContext, api: SuperwallApi, resource: Resour
   const value = argv.value as string | undefined;
   if (!value) throw new Error(`Usage: superwall ${resource} create <${createArgLabel(resource)}>`);
 
-  // Projects aren't created directly — they're spun up under the hood when you
-  // add the first platform. Point the user at `apps create`.
+  // Projects aren't created directly — they're spun up when you add the first platform.
   if (resource === "projects") {
     throw new Error(
       "Projects are created for you. Add a platform instead:\n" +
@@ -229,8 +211,7 @@ async function doCreate(ctx: CommandContext, api: SuperwallApi, resource: Resour
     );
   }
 
-  // Apps = a platform of a project. Bind to an existing project with --project,
-  // otherwise spin up a new project (named after the app) under the hood.
+  // An app is a platform of a project; without --project a new project is spun up for it.
   if (resource === "apps") {
     const platform = argv.platform as string | undefined;
     if (!platform) {
@@ -273,7 +254,6 @@ async function doCreate(ctx: CommandContext, api: SuperwallApi, resource: Resour
     return;
   }
 
-  // Everything else scopes to the current project (and app, for campaigns).
   const scope = await pickScope(ctx, api, isAppScoped(resource as keyof typeof RESOURCES));
 
   if (dryRun) {
@@ -304,7 +284,6 @@ function createOne(api: SuperwallApi, resource: ResourceName, scope: Scope, valu
   }
 }
 
-/** Build the full product payload from `products create` flags (agent-facing). */
 function productOptsFromArgv(argv: Arguments): ProductCreateOpts {
   const opts: ProductCreateOpts = {};
   if (argv.name) opts.name = String(argv.name);
@@ -349,21 +328,14 @@ function createArgLabel(resource: ResourceName): string {
   return resource === "campaigns" ? "description" : "identifier";
 }
 
-/** "1 project" / "3 campaigns". */
 function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
-/** Only name the org when the account has more than one (else it's just noise). */
 function orgLabel(api: SuperwallApi): string {
   return api.org.count > 1 && api.org.name ? ` in \`${api.org.name}\`` : "";
 }
 
-/**
- * Name the scope only where it's ambiguous: the project when the account has
- * more than one, the app when the project has more than one. A lone
- * project/app is implied — showing it is just noise.
- */
 function scopeLabel(resource: keyof typeof RESOURCES, scope: PickedScope): string {
   const parts: string[] = [];
   if (scope.projectCount > 1 && scope.projectName) parts.push(scope.projectName);

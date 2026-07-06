@@ -2,20 +2,12 @@ import { ui } from "@/ui";
 import { defineCommand } from "@/command";
 import { KNOWN_SKILLS, SUPERWALL_SKILLS_SOURCE, installToolkit, installBundledSkills } from "@/core/skills/install";
 
-/**
- * `superwall skills [--skill <name>...] [--dry-run]`
- *
- * Install the Superwall agent toolkit globally (every detected agent) via the
- * open `skills` CLI — canonical ~/.agents/skills + per-agent symlinks. When run
- * interactively without --skill, you pick which skills to install.
- */
 export const runSkills = defineCommand(async (ctx) => {
   ui.intro("Superwall agent toolkit");
 
   let skills = normalizeList(ctx.argv.skill);
   const { dryRun, plain } = ctx;
 
-  // Interactive picker when no explicit selection (mirrors the `skills` CLI).
   if (!skills && !dryRun && !plain) {
     const picked = await ui.multiselect({
       message: `Which skills from ${SUPERWALL_SKILLS_SOURCE}? (installs globally)`,
@@ -35,7 +27,7 @@ export const runSkills = defineCommand(async (ctx) => {
   const spin = ui.spinner();
   spin.start(dryRun ? "Resolving" : "Installing skills globally");
   const pub = await installToolkit({ skills, dryRun });
-  const bundled = await installBundledSkills({ dryRun }); // integration/migration/placements
+  const bundled = await installBundledSkills({ dryRun });
   const ok = pub.ok || bundled.ok;
   spin.stop(dryRun ? "Dry run" : ok ? "Skills installed for every detected agent" : "Install failed");
 

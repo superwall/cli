@@ -4,7 +4,6 @@ import { titleCase } from "@/core/api/resources";
 import { performLogin } from "@/core/auth/login";
 import { clearSession, loadSession } from "@/core/auth/storage";
 
-/** `superwall login` — device-flow OAuth into Superwall → mint + store the org key. */
 export const runLogin = defineCommand(async (ctx) => {
   ui.intro("Superwall login");
   const spin = ui.spinner();
@@ -41,11 +40,10 @@ export const runLogin = defineCommand(async (ctx) => {
     ui.outro("You're all set — run `superwall integrate` to set up your app.");
   } catch (e) {
     spin.stop("Login failed");
-    throw e; // central handler renders the error line
+    throw e;
   }
 });
 
-/** `superwall logout` — forget the stored session. */
 export const runLogout = defineCommand(() => {
   const s = loadSession();
   clearSession();
@@ -53,7 +51,6 @@ export const runLogout = defineCommand(() => {
   else ui.info("You weren't logged in.");
 });
 
-/** `superwall whoami` — show the current session. */
 export const runWhoami = defineCommand(() => {
   const s = loadSession();
   if (!s) {

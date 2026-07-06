@@ -7,15 +7,10 @@ export type AccountMode = "existing-key" | "sign-in" | "sign-up";
 
 export interface AccountResult {
   mode: AccountMode;
-  /** Public API key for the (linked or created) Superwall app. */
   apiKey: string;
   appName?: string;
 }
 
-/**
- * SEAM — the real Superwall API lands here later (the user is wiring this
- * personally). For now these flows simulate so the wizard is exercisable today.
- */
 export async function resolveAccount(opts: {
   existing: ExistingIntegration;
   argv: Arguments;

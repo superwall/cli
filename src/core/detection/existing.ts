@@ -5,17 +5,12 @@ import type { DetectedApp } from "./scan";
 import { allDeps, readPackageJson } from "@/core/frameworks/detect-helpers";
 
 export interface ExistingIntegration {
-  /** The Superwall SDK is already a dependency of this app. */
   sdkInstalled: boolean;
-  /** A Superwall.configure(...) / provider call is already present in source. */
   configureFound: boolean;
-  /** A Superwall public key already present in source or env (pk_…). */
   apiKey?: string;
-  /** True when the app is, by all signals, already fully set up. */
   fullyIntegrated: boolean;
 }
 
-/** npm package name(s) that indicate the SDK is installed, per integration. */
 const JS_SDK_PACKAGES: Partial<Record<Integration, string[]>> = {
   [Integration.expo]: ["expo-superwall"],
   [Integration.reactNative]: ["@superwall/react-native-superwall", "react-native-superwall"],
@@ -40,13 +35,11 @@ const IGNORE = [
 const MAX_FILES = 600;
 
 function sdkInstalledFor(app: DetectedApp): boolean {
-  // JS: check deps.
   const jsPkgs = JS_SDK_PACKAGES[app.integration];
   if (jsPkgs) {
     const deps = allDeps(readPackageJson(app.path));
     if (jsPkgs.some((p) => p in deps)) return true;
   }
-  // Native + Flutter + fallback: look at manifests/lockfiles for an SDK reference.
   const manifests = fg.sync(
     ["**/Package.resolved", "**/project.pbxproj", "**/Podfile", "**/pubspec.yaml", "**/pubspec.lock"],
     { cwd: app.path, ignore: IGNORE, absolute: true, deep: 5 },
@@ -61,7 +54,6 @@ function sdkInstalledFor(app: DetectedApp): boolean {
   return false;
 }
 
-/** Inspect an app for an existing Superwall integration. */
 export function detectExisting(app: DetectedApp): ExistingIntegration {
   const sdkInstalled = sdkInstalledFor(app);
 

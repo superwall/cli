@@ -1,10 +1,6 @@
 import type { Row } from "@/core/api/resources";
 
-/**
- * Generate a minimal `.storekit` config from a set of Superwall products so the
- * app can be tested against local StoreKit (no sandbox account needed). Xcode
- * refines pricing/types on import; this seeds the product identifiers.
- */
+// Xcode refines pricing/types on import; this only seeds the product identifiers.
 export function generateStoreKit(products: Row[]): object {
   const items = products
     .map((p) => String(p.identifier ?? p.product_identifier ?? p.name ?? ""))

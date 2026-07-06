@@ -1,10 +1,5 @@
 import { spawn } from "node:child_process";
 
-/**
- * Copy text to the system clipboard, best-effort. Returns false if no clipboard
- * tool is available (headless Linux without xclip, etc.) so callers can fall
- * back to printing the text.
- */
 export async function copyToClipboard(text: string): Promise<boolean> {
   const cmd = clipboardCommand();
   if (!cmd) return false;
@@ -28,7 +23,6 @@ function clipboardCommand(): { command: string; args: string[] } | null {
     case "win32":
       return { command: "clip", args: [] };
     default:
-      // Linux/other — try xclip (X11). wl-copy/xsel could be added if needed.
       return { command: "xclip", args: ["-selection", "clipboard"] };
   }
 }

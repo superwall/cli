@@ -1,22 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-/**
- * Bundled skills = the single source of truth for the wizard's integration /
- * migration / placement guidance. The `skills/` directory ships in the package
- * so it feeds both the wizard's headless agent (here) and, eventually, an
- * install into the user's own agent.
- */
 export type BundledSkillId = "superwall-integrate" | "superwall-migrate" | "superwall-placements";
 
 const cache = new Map<string, string>();
 
-/** Absolute path to the bundled `skills/` directory (no trailing slash). */
 export function bundledSkillsDir(): string {
   return skillsRoot().replace(/\/$/, "");
 }
 
-/** Locate the bundled `skills/` dir in both dev (src) and packaged (dist) layouts. */
 function skillsRoot(): string {
   const candidates = [
     "../../../skills/", // dev:  src/core/skills/ → <repo>/skills
@@ -29,11 +21,6 @@ function skillsRoot(): string {
   return fileURLToPath(new URL("../skills/", import.meta.url));
 }
 
-/**
- * The SKILL.md body (frontmatter stripped) for a bundled skill — the guidance we
- * inline into an agent prompt. Cached; returns "" if missing so callers degrade
- * gracefully rather than crash.
- */
 export function loadBundledSkill(id: BundledSkillId): string {
   const cached = cache.get(id);
   if (cached !== undefined) return cached;

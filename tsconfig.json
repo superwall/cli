@@ -13,9 +13,8 @@
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["bin.ts", "src/**/*.ts"]

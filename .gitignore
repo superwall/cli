@@ -5,3 +5,6 @@ dist/
 .superwall/
 .env
 .env.*
+
+# local dev docs / scratch
+docs/

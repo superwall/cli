@@ -1,10 +1,10 @@
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";
-import { SUPPORTED_LABEL } from "@/constants";
+import { SUPPORTED_LABEL } from "@/core/detection/framework";
 import { scanProject } from "@/core/detection/scan";
 import { detectExisting } from "@/core/detection/existing";
 
-/** `superwall scan [--json]` — report detected apps + existing integration. */
 export const runScan = defineCommand(async (ctx) => {
   const { installDir, json } = ctx;
   const result = json ? await scanProject(installDir) : await withSpinner("Scanning project", () => scanProject(installDir));
@@ -66,16 +66,3 @@ export const runScan = defineCommand(async (ctx) => {
   if (result.skipped.length) ui.info(`Skipped (not paywall targets): ${result.skipped.join(", ")}`);
   ui.outro("");
 });
-
-async function withSpinner<T>(label: string, work: () => Promise<T>): Promise<T> {
-  const spin = ui.spinner();
-  spin.start(label);
-  try {
-    const result = await work();
-    spin.stop(label);
-    return result;
-  } catch (e) {
-    spin.stop("Failed");
-    throw e;
-  }
-}

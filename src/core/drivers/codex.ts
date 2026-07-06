@@ -12,12 +12,10 @@ import { onPath, readVersion, spawnStream } from "./spawn";
 
 const BIN = "codex";
 
-/** Codex's event schema shifts between versions; pull text/tool info defensively. */
+// Codex's event schema shifts between versions; pull text/tool info defensively.
 function normalizeCodexEvent(msg: Record<string, unknown>, onEvent?: (e: AgentEvent) => void): void {
   if (!onEvent) return;
-  // Newer: { type: "item.completed", item: { type, text } }
   const item = (msg.item ?? null) as Record<string, unknown> | null;
-  // Classic: { id, msg: { type, message|command } }
   const inner = (msg.msg ?? null) as Record<string, unknown> | null;
   const node = inner ?? item ?? msg;
   const t = String(node.type ?? msg.type ?? "");
@@ -48,8 +46,7 @@ export const codexDriver: AgentDriver = {
   async run(opts: AgentRunOptions): Promise<AgentResult> {
     const lastMsgFile = join(tmpdir(), `superwall-codex-${process.pid}-${Date.now()}.txt`);
 
-    // Prepend the system "commandments" to the prompt — codex exec has no
-    // dedicated append-system-prompt flag, so we fold it into the instructions.
+    // codex exec has no append-system-prompt flag, so fold it into the prompt.
     const prompt = opts.systemAppend
       ? `${opts.systemAppend}\n\n---\n\n${opts.prompt}`
       : opts.prompt;
@@ -60,7 +57,7 @@ export const codexDriver: AgentDriver = {
       "--json",
       "--sandbox",
       opts.readOnly ? "read-only" : "workspace-write",
-      // Installs (SPM/npm/pod) need the network; workspace-write blocks it by default.
+      // Installs need the network; workspace-write blocks it by default.
       ...(opts.readOnly ? [] : ["-c", "sandbox_workspace_write.network_access=true"]),
       "-C",
       opts.cwd,
@@ -79,7 +76,7 @@ export const codexDriver: AgentDriver = {
         try {
           normalizeCodexEvent(JSON.parse(line), opts.onEvent);
         } catch {
-          /* non-JSON */
+          /* ignore */
         }
       },
     });
@@ -89,7 +86,7 @@ export const codexDriver: AgentDriver = {
     try {
       finalText = (await readFile(lastMsgFile, "utf8")).trim() || undefined;
     } catch {
-      /* no final message file */
+      /* ignore */
     } finally {
       await rm(lastMsgFile, { force: true }).catch(() => {});
     }

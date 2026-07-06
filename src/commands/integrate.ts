@@ -1,6 +1,8 @@
-import { DASHBOARD_URL, SUPPORTED_LABEL, VERSION } from "@/constants";
+import { DASHBOARD_URL, VERSION } from "@/constants";
+import { SUPPORTED_LABEL } from "@/core/detection/framework";
 import { stripReport } from "@/ui/log";
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import { defineCommand, type CommandContext } from "@/command";
 import { isNonInteractive } from "@/util/env";
 import { loadReport, saveReport } from "@/core/reports";
@@ -23,27 +25,15 @@ import { copyToClipboard } from "@/util/clipboard";
 import { runFallback } from "@/core/agent/fallback";
 import { ACTIONS, actionById, type ActionContext, type ActionId, type WizardAction } from "@/core/actions";
 
-/** `superwall integrate` / `superwall wizard` — the full zero-to-integrated pipeline. */
 export const runIntegrate = defineCommand(runPipeline);
 
-/** A subcommand that runs a single action directly (`placements`, `dashboard`). */
 export function runActionCommand(action: ActionId): (argv: import("yargs").Arguments) => Promise<void> {
   return defineCommand((ctx) => runFlow(ctx, action));
 }
 
-/**
- * The end-to-end onboarding pipeline. One command, zero → fully integrated,
- * local-first. Each stage detects and skips work that's already done.
- *
- *   1. Integrate the SDK        (skip if already installed)
- *   2. Products                 (App Store Connect import / .storekit / manual)
- *   3. Campaigns & Placements   (show current, agent reviews app + sets both up)
- *   4. Paywall                  (design in the editor)
- *   5. Verify                   (readiness check + on-device steps)
- */
 async function runPipeline(ctx: CommandContext): Promise<void> {
   const { installDir, dryRun, argv } = ctx;
-  ui.intro(`Superwall wizard v${VERSION}`);
+  ui.intro(`Superwall v${VERSION}`);
 
   const drivers = await withSpinner("Checking your setup", () => detectDrivers());
   if (drivers.length === 0) {
@@ -60,7 +50,6 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   if (existing.fullyIntegrated) ui.success(`Superwall is already set up in \`${app.name}\`.`);
   else if (existing.sdkInstalled) ui.info(`Partial Superwall setup found in \`${app.name}\`.`);
 
-  // RevenueCat / other billing → ask intent (affects the integration path).
   const billing = detectBilling(app);
   if (billing.revenueCat && !isNonInteractive()) {
     const intent = await ui.select({
@@ -76,15 +65,11 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     ui.info(`RevenueCat: \`${intent}\``);
   }
 
-  // Login is LAZY — we only need the org session to bind a fresh app's SDK key
-  // or to set up the dashboard (stages 3–6). Never gate the SDK step on it, and
-  // don't announce it when there's already a session.
+  // Login is lazy: only the dashboard stages need the org session — never gate the SDK step on it.
   let session = loadSession();
   if (session) process.env.SUPERWALL_API_KEY = session.apiKey;
 
-  // If the app already has a Superwall key and we're signed in, start resolving
-  // WHICH Superwall app this is right now, in the background — it'll be ready by
-  // the time the dashboard stages need it, with no visible mid-flow wait.
+  // Resolve the app scope in the background so the dashboard stages don't wait on it mid-flow.
   let scopePromise: ReturnType<typeof resolveScopeFromKey> | null = null;
   if (session && existing.apiKey) {
     scopePromise = resolveScopeFromKey(SuperwallApi.fromSession(), existing.apiKey).catch(() => null);
@@ -120,11 +105,9 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     }
   };
 
-  // Resolve the app's public (pk_) SDK key. Prefer one already in the project;
-  // otherwise sign in and bind to the org (auto when unambiguous, else pick).
   let apiKey = existing.apiKey ?? "";
-  let scope: Scope | null = null; // resolved project/app — drives stages 3–6
-  let bundleId: string | undefined; // app's store bundle id — for ASC matching
+  let scope: Scope | null = null;
+  let bundleId: string | undefined;
   if (!apiKey) {
     if (isNonInteractive()) {
       if (session) {
@@ -157,7 +140,6 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   }
   const ctxAction: ActionContext = { app, apiKey, existing };
 
-  // ── Stage 1 · Integrate the SDK ──────────────────────────────────
   ui.step("Step 1 · Integrate the SDK");
   if (existing.fullyIntegrated) {
     ui.info("SDK already integrated — skipped.");
@@ -184,13 +166,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     spin.stop(ok ? "Superwall skills installed" : "Skill install skipped");
   }
 
-  // ── Steps 2–5 · dashboard setup ──────────────────────────────────
-  // Needs the org session — sign in now if we haven't (e.g. an already-integrated
-  // app that skipped the bind), and resolve the app scope from its pk_ key. The
-  // lookup is a network call, so show a spinner instead of a silent pause.
   if (!dryRun && !isNonInteractive() && !scope && (await ensureLogin())) {
-    // Prefer the background lookup started earlier; only show a spinner if we
-    // never got to kick it off (e.g. signed in just now).
     const resolved = scopePromise
       ? await scopePromise
       : await withSpinner("Finding this app in Superwall", () =>
@@ -217,7 +193,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
 
 async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   const { installDir, dryRun, argv } = ctx;
-  ui.intro(`Superwall wizard v${VERSION}`);
+  ui.intro(`Superwall v${VERSION}`);
 
   const drivers = await withSpinner("Checking your setup", () => detectDrivers());
   if (drivers.length === 0) {
@@ -238,8 +214,8 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   if (!choice) return;
   const action = actionById[choice];
 
-  if (action.requiresOrgKey && !process.env.SUPERWALL_API_KEY) {
-    ui.warn("That needs your org API key (SUPERWALL_API_KEY). Account sign-in is coming soon.");
+  if (action.requiresOrgKey && !process.env.SUPERWALL_API_KEY && !loadSession()) {
+    ui.warn("That needs an authenticated session — run `superwall login` first (or set SUPERWALL_API_KEY).");
     ui.outro("");
     return;
   }
@@ -267,7 +243,6 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     await runActionWithUI(driver.driver, action, actionCtx);
   }
 
-  // After a fresh integration, install the agent toolkit automatically.
   if (action.id === "integrate" && !existing.fullyIntegrated && !dryRun) {
     const spin = ui.spinner();
     spin.start("Installing Superwall skills for your agent");
@@ -322,7 +297,6 @@ async function chooseAction(
   if (forced) return forced;
   if (isNonInteractive()) return "integrate";
 
-  // Fresh app → a single yes/no. The toolkit installs automatically afterward.
   if (!existing.sdkInstalled) {
     const yes = await ui.confirm({ message: `Integrate Superwall into \`${app.name}\`?` });
     if (yes === null) {
@@ -336,7 +310,6 @@ async function chooseAction(
     return "integrate";
   }
 
-  // Already integrated → offer the follow-up actions (not integrate).
   const available = ACTIONS.filter((a) => {
     if (a.id === "integrate") return false;
     if (a.requiresOrgKey && !process.env.SUPERWALL_API_KEY) return false;
@@ -350,44 +323,23 @@ async function chooseAction(
   return sel as ActionId | null;
 }
 
-/**
- * Run a pipeline stage: paint the step header FIRST, give the terminal a beat to
- * render it, then run the body (which may start a spinner). Without the beat the
- * step and the spinner flush together and read as one delayed lump.
- */
+// Paint the step header a beat before the body's spinner, else they flush as one lump.
 async function stage(label: string, fn: () => Promise<void> | void): Promise<void> {
   ui.step(label);
   await new Promise((resolve) => setTimeout(resolve, 40));
   try {
     await fn();
   } catch {
-    // Keep it human — no HTTP codes / endpoint paths bubbling up.
     ui.error(`Couldn't finish ${label.replace(/^Step \d+ · /, "")} — you can set it up in the dashboard.`);
   }
 }
 
-/** Run async work behind a spinner — never leave a call silent. */
-async function withSpinner<T>(label: string, work: () => Promise<T>): Promise<T> {
-  const spin = ui.spinner();
-  spin.start(label);
-  try {
-    const result = await work();
-    spin.stop(label);
-    return result;
-  } catch (e) {
-    spin.stop("Failed");
-    throw e;
-  }
-}
-
-/** Install the public toolkit + the CLI's bundled skills into every agent. */
 async function installAgentSkills(): Promise<boolean> {
   const pub = await installToolkit();
   const bundled = await installBundledSkills();
   return pub.ok || bundled.ok;
 }
 
-/** Copy the integration prompt to the clipboard (or print it if copy fails). */
 async function copyIntegrationPrompt(ctx: ActionContext): Promise<void> {
   const prompt = buildCopyPrompt(actionById["integrate"], ctx);
   const copied = await copyToClipboard(prompt);
@@ -398,12 +350,7 @@ async function copyIntegrationPrompt(ctx: ActionContext): Promise<void> {
   }
 }
 
-/**
- * Step 3 · Campaigns & Placements — placements and campaigns are one concern (a
- * placement only presents a paywall once it's routed through a campaign). Show
- * the current campaigns with their placements, then let the agent review the
- * whole app (campaign-aware) and set both up together.
- */
+// A placement only presents a paywall once routed through a campaign, so set both up together.
 async function runCampaignsAndPlacements(
   driver: AgentDriver,
   ctxAction: ActionContext,
@@ -449,7 +396,6 @@ function placementsOf(campaign: Row): CampaignPlacement[] {
   return ((campaign as Record<string, unknown>).placements as CampaignPlacement[] | undefined) ?? [];
 }
 
-/** A compact "campaign → placements" summary to make the agent campaign-aware. */
 function campaignSummary(campaigns: Row[]): string {
   if (!campaigns.length) return "No campaigns exist yet — the app will likely need at least one.";
   return campaigns

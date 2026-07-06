@@ -1,18 +1,3 @@
-/**
- * The plain, line-based backend.
- *
- * Used whenever the rich Ink UI can't or shouldn't run: no TTY, CI, piped
- * output, `--json`, `--no-ui`, or an agent driving the CLI over a pipe. It
- * writes one styled line per event — no cursor tricks, no animation, nothing
- * that corrupts a captured stdout stream.
- *
- * Prompts have no interactive surface here, so they resolve to their default
- * (the initial/first option) and echo the auto-selected answer. Commands are
- * expected to guard genuinely interactive branches with `isNonInteractive()`;
- * this backend just makes sure nothing hangs waiting for input that will never
- * come. Everything prints to stdout except `error`, which goes to stderr so a
- * `--json` run's stdout stays clean even when the command fails.
- */
 import { bold, brand, dim, green, red, styleMarkdown, yellow } from "@/ui/log";
 import type { MultiSelectOpts, Renderer, SelectOpts, Spinner, TextOpts } from "../types";
 
@@ -23,7 +8,6 @@ function err(line: string): void {
   process.stderr.write(line + "\n");
 }
 
-/** Prefix every line of a block with a dim tree bar. */
 function block(text: string, prefix = dim("│ ")): void {
   for (const line of styleMarkdown(text).split("\n")) out(prefix + line);
 }
@@ -73,7 +57,6 @@ export const plainRenderer: Renderer = {
   },
 
   async select(o: SelectOpts) {
-    // Auto-pick the requested option if selectable, else the first enabled one.
     const initial = o.options.find((x) => x.value === o.initialValue && !x.disabled);
     const chosen = initial ?? o.options.find((x) => !x.disabled) ?? null;
     if (chosen) out(`${dim("?")} ${styleMarkdown(o.message)} ${dim("→")} ${chosen.label}`);

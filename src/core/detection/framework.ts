@@ -6,16 +6,6 @@ import { reactNativeFramework } from "@/core/frameworks/react-native";
 import { flutterFramework } from "@/core/frameworks/flutter";
 import { webFramework } from "@/core/frameworks/web";
 
-/** Every framework the wizard can target. */
-export const FRAMEWORKS: Framework[] = [
-  swiftFramework,
-  expoFramework,
-  reactNativeFramework,
-  flutterFramework,
-  webFramework,
-];
-
-/** Lookup a framework profile (sdkPackage, docs, prompt) by integration id. */
 export const frameworkByIntegration: Record<Integration, Framework> = {
   [Integration.swift]: swiftFramework,
   [Integration.expo]: expoFramework,
@@ -23,3 +13,12 @@ export const frameworkByIntegration: Record<Integration, Framework> = {
   [Integration.flutter]: flutterFramework,
   [Integration.web]: webFramework,
 };
+
+const supportedNames = Object.values(frameworkByIntegration)
+  .filter((f) => f.supported)
+  .map((f) => f.name);
+
+export const SUPPORTED_LABEL =
+  supportedNames.length > 1
+    ? `${supportedNames.slice(0, -1).join(", ")}, or ${supportedNames.at(-1)}`
+    : (supportedNames[0] ?? "");

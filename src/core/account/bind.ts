@@ -10,11 +10,9 @@ import {
   type Project,
 } from "@/core/api/resources";
 
-/** Sentinel select values for the "create new …" options. */
 const NEW = "__new__";
 const NEW_PROJECT = "__new_project__";
 
-/** Footer key hints. Escape means "up a level"; at the root it cancels. */
 const BACK = "esc back";
 const CANCEL = "esc cancel";
 
@@ -25,7 +23,6 @@ export interface AppBinding {
   applicationId: string;
 }
 
-/** The Superwall platform id for a detected local framework. */
 export function platformForIntegration(integration: Integration): string {
   switch (integration) {
     case Integration.swift:
@@ -42,13 +39,6 @@ export function platformForIntegration(integration: Integration): string {
   }
 }
 
-/**
- * Interactively bind the local app to a Superwall app, returning its `pk_` key.
- *
- * A two-step wizard (project → app) with create-new at each level. Escape goes
- * back one step (app → project); Escape at the project step cancels. Returns
- * null on cancel.
- */
 export async function resolveAppBinding(
   api: SuperwallApi,
   opts: { platform: string; appName: string; bundleId?: string },
@@ -62,7 +52,7 @@ export async function resolveAppBinding(
     lastProjectId = String(project.id); // so going back re-selects it
 
     const app = await pickApp(api, project, opts);
-    if (app === "back") continue; // Escape on the app step → re-pick the project.
+    if (app === "back") continue;
 
     if (!app.public_api_key) {
       ui.warn(`\`${app.name ?? app.id}\` has no SDK key yet — pick another or add a new app.`);
@@ -72,11 +62,7 @@ export async function resolveAppBinding(
   }
 }
 
-/**
- * Find the project/app scope for a public (pk_) key that's already in the app's
- * code — so an already-integrated app can reach the dashboard stages without
- * re-picking. Returns null if the key isn't in this org.
- */
+// Lets an already-integrated app (pk_ key already in code) reach later stages without re-picking.
 export async function resolveScopeFromKey(
   api: SuperwallApi,
   publicApiKey: string,
@@ -117,7 +103,7 @@ async function pickProject(
     if (sel === null) return "cancel";
     if (sel === NEW) {
       const created = await createProjectFlow(api, defaultName);
-      if (created === "back") continue; // back out of create → back to the project list
+      if (created === "back") continue;
       return created;
     }
     return projects.find((p) => String(p.id) === sel)!;
@@ -137,9 +123,7 @@ async function pickApp(
       return created;
     }
 
-    // One app per platform per project. If this platform is taken, offer a fresh
-    // project instead of an (impossible) second app. Other-platform apps are
-    // shown but disabled — you can't bind e.g. iOS code to an Android app.
+    // One app per platform per project; other-platform apps are shown but disabled.
     const platformTaken = apps.some((a) => a.platform === opts.platform);
     const label = platformLabel(opts.platform);
     const match = apps.find((a) => a.platform === opts.platform) ?? apps[0]!;
@@ -216,7 +200,7 @@ async function createAppFlow(
       footer: "enter to skip · esc back",
       transient: true,
     });
-    if (bundle === null) continue; // Escape on bundle → back to the name prompt.
+    if (bundle === null) continue;
     const bundleId = bundle.trim() || opts.bundleId;
 
     // createApplication returns the parent project with the new app nested inside.
@@ -241,7 +225,6 @@ function appCountHint(p: Project): string {
   return `${n} app${n === 1 ? "" : "s"}`;
 }
 
-/** Run async work behind a spinner — never leave a network call silent. */
 async function loading<T>(label: string, work: () => Promise<T>): Promise<T> {
   const spin = ui.spinner();
   spin.start(label);

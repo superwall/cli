@@ -1,6 +1,6 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ENV_API_KEY, VERSION, WIZARD_NAME } from "@/constants";
+import { ENV_API_KEY, VERSION } from "@/constants";
 
 const installDirOption = {
   "install-dir": {
@@ -25,7 +25,7 @@ const RESOURCES = ["orgs", "projects", "apps", "products", "campaigns", "paywall
 export function run(): void {
   let cli = yargs(hideBin(process.argv))
     .scriptName("superwall")
-    .usage(`${WIZARD_NAME}\n\n$0 [command]`)
+    .usage("Superwall CLI\n\n$0 [command]")
     .option("ui", {
       type: "boolean",
       default: true,
@@ -160,7 +160,7 @@ export function run(): void {
       RESOURCE_HELP[resource] ?? `Manage Superwall ${resource} (list · create)`,
       (y) =>
         y
-          .positional("action", { type: "string", default: "list", describe: "list | create | placement" })
+          .positional("action", { type: "string", default: "list", describe: "list | create | placement | use | storekit" })
           .positional("value", { type: "string", describe: "identifier / description / campaign id" })
           .positional("value2", { type: "string", describe: "placement name (campaigns placement)" })
           .options({

@@ -14,7 +14,6 @@ export interface Project {
   applications?: Application[];
 }
 
-/** A resource row we only display generically (id + a best-guess name). */
 export type Row = Record<string, unknown> & { id?: string | number };
 
 export const RESOURCES = {
@@ -26,7 +25,6 @@ export const RESOURCES = {
 
 export type ResourceName = keyof typeof RESOURCES | "apps" | "orgs" | "projects";
 
-/** Each list endpoint is scoped by either the project or the application. */
 const RESOURCE_SCOPE: Record<keyof typeof RESOURCES, "project" | "application"> = {
   products: "project",
   entitlements: "project",
@@ -34,17 +32,14 @@ const RESOURCE_SCOPE: Record<keyof typeof RESOURCES, "project" | "application"> 
   paywalls: "application",
 };
 
-/** Whether a resource list is scoped by application (vs project). */
 export function isAppScoped(name: keyof typeof RESOURCES): boolean {
   return RESOURCE_SCOPE[name] === "application";
 }
 
-/** Title-case a single word (OWNER → Owner). */
 export function titleCase(s: string): string {
   return s ? s[0]!.toUpperCase() + s.slice(1).toLowerCase() : s;
 }
 
-/** Human, title-cased platform tag (ios → iOS, react_native → React Native). */
 export function platformLabel(platform?: string): string {
   switch ((platform ?? "").toLowerCase()) {
     case "ios":
@@ -70,7 +65,6 @@ export interface Scope {
   appName?: string;
 }
 
-/** Resolve the default (or specified) project + application to scope list calls. */
 export async function resolveScope(
   api: SuperwallApi,
   opts: { projectId?: string; applicationId?: string } = {},
@@ -92,7 +86,6 @@ export async function listProjects(api: SuperwallApi): Promise<Project[]> {
   return api.list<Project>("/v2/projects");
 }
 
-/** All applications across every project (each carries its public_api_key). */
 export async function listApplications(api: SuperwallApi): Promise<Application[]> {
   const projects = await listProjects(api);
   return projects.flatMap((p) => p.applications ?? []);
@@ -106,8 +99,6 @@ export async function listResource(api: SuperwallApi, name: keyof typeof RESOURC
   return api.list<Row>(`${RESOURCES[name]}?project_id=${scope.projectId}`);
 }
 
-// ── Writes ───────────────────────────────────────────────────────────────
-
 export function createEntitlement(api: SuperwallApi, scope: Scope, identifier: string): Promise<Row> {
   return api.post<Row>("/v2/entitlements", { project_id: scope.projectId, identifier });
 }
@@ -116,7 +107,7 @@ export type SubscriptionPeriod = "day" | "week" | "month" | "year";
 
 export interface ProductCreateOpts {
   name?: string;
-  /** { amount in the smallest unit (cents), ISO currency }. */
+  /** amount is in the smallest unit (cents). */
   price?: { amount: number; currency: string };
   subscription?: { period: SubscriptionPeriod; period_count?: number; trial_period_days?: number };
   entitlements?: string[];
@@ -166,12 +157,10 @@ export function createCampaign(api: SuperwallApi, scope: Scope, description: str
   return api.post<Row>("/v2/campaigns", { application_id: scope.applicationId, description });
 }
 
-/** Add a placement (by event name) to a campaign. */
 export function addPlacement(api: SuperwallApi, campaignId: string, placement: string): Promise<Row> {
   return api.post<Row>(`/v2/campaigns/${campaignId}/placements`, { event_name: placement });
 }
 
-/** Best-effort human label for a generic row. */
 export function rowName(row: Row): string {
   for (const key of ["name", "identifier", "product_identifier", "title", "description", "id"]) {
     const v = row[key];

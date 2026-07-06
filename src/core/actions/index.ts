@@ -7,7 +7,6 @@ import { migrateAction } from "./migrate";
 
 export * from "./types";
 
-/** All internal actions, in menu order. */
 export const ACTIONS: WizardAction[] = [
   integrateAction,
   placementsReviewAction,

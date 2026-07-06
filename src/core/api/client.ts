@@ -17,16 +17,13 @@ export class NotLoggedInError extends Error {
   }
 }
 
-/** A typed-ish client over the Superwall REST API, authenticated by the session. */
 export class SuperwallApi {
   private constructor(private readonly session: Session) {}
 
-  /** Construct from an explicit session (used by tests + fromSession). */
   static of(session: Session): SuperwallApi {
     return new SuperwallApi(session);
   }
 
-  /** Build from the stored session, or throw NotLoggedInError. */
   static fromSession(): SuperwallApi {
     const session = loadSession();
     if (!session) throw new NotLoggedInError();
@@ -75,10 +72,7 @@ export class SuperwallApi {
     return this.request<T>("DELETE", path);
   }
 
-  /**
-   * Paginate a cursor-based `{ data, has_more }` list endpoint and return all rows.
-   * (The API caps `limit` at 100.)
-   */
+  // The API caps `limit` at 100.
   async list<T>(path: string): Promise<T[]> {
     const out: T[] = [];
     let after: string | undefined;

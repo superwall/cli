@@ -5,13 +5,6 @@ import { scanProject } from "@/core/detection/scan";
 import { detectExisting } from "@/core/detection/existing";
 import { apiKeyFromEnv } from "@/util/env";
 
-/**
- * `superwall doctor` — report the integration's health.
- *
- * v1: deterministic checks only. The cross-system checks from the brainstorm
- * (placement in code ↔ campaign, product ids ↔ App Store Connect) land here as
- * the product grows.
- */
 export const runDoctor = defineCommand(async (ctx) => {
   ui.intro("Superwall doctor");
 
@@ -43,7 +36,6 @@ export const runDoctor = defineCommand(async (ctx) => {
   ui.outro("");
 });
 
-/** A single health line: green tick when healthy, amber warning when not. */
 function check(ok: boolean, text: string): void {
   if (ok) ui.success(text);
   else ui.warn(text);

@@ -7,28 +7,20 @@ import { frameworkByIntegration } from "./framework";
 import { allDeps, readPackageJson } from "@/core/frameworks/detect-helpers";
 
 export interface DetectedApp {
-  /** Absolute path to the app root. */
   path: string;
-  /** Path relative to the scan root ("." for the root itself). */
   relPath: string;
-  /** Display name (directory basename). */
   name: string;
   framework: Framework;
   integration: Integration;
-  /** Free-form note (e.g. "SwiftUI", "Expo 56", "next"). */
   details?: string;
-  /** Confidence 0..1. */
   score: number;
 }
 
 export interface ScanResult {
   root: string;
   isMonorepo: boolean;
-  /** Supported apps the wizard can set up, sorted by confidence (highest first). */
   apps: DetectedApp[];
-  /** Detected but not-yet-supported apps (web) — shown as "coming soon". */
   comingSoon: DetectedApp[];
-  /** Names of packages we found but skipped (backends, libs) — for messaging. */
   skipped: string[];
 }
 
@@ -48,7 +40,6 @@ const IGNORE = [
 
 const SCAN_DEPTH = 6;
 
-/** Frontend frameworks that make a JS package a paywall-capable web target. */
 const FRONTEND_DEPS = [
   "next",
   "nuxt",
@@ -72,7 +63,6 @@ interface Classification {
   score: number;
 }
 
-/** Classify a directory that contains a package.json by its dependencies. */
 function classifyJs(dir: string): Classification | null {
   const pkg = readPackageJson(dir);
   if (!pkg) return null;
@@ -82,10 +72,9 @@ function classifyJs(dir: string): Classification | null {
     return { integration: Integration.reactNative, details: deps["react-native"], score: 0.9 };
   const fe = FRONTEND_DEPS.find((d) => d in deps);
   if (fe) return { integration: Integration.web, details: fe, score: 0.7 };
-  return null; // backend / tooling / library — not a paywall target
+  return null;
 }
 
-/** SwiftUI vs UIKit by scanning a single app's sources. */
 function swiftUiKind(dir: string): string {
   const files = fg.sync("**/*.swift", {
     cwd: dir,
@@ -103,18 +92,14 @@ function swiftUiKind(dir: string): string {
     } catch {
       /* ignore */
     }
-    if (swiftui) break; // SwiftUI wins; no need to keep scanning
+    if (swiftui) break;
   }
   if (swiftui) return "SwiftUI";
   if (uikit) return "UIKit";
   return "Swift";
 }
 
-/**
- * A `.xcodeproj` / `Package.swift` inside an `ios/`(or `android/`) directory
- * that sits under a JS app root is a *generated* native project (Expo prebuild /
- * RN). It is not a standalone Swift app — skip it.
- */
+// A native project under a JS app root is a generated project (Expo prebuild / RN), not a standalone Swift app.
 function isGeneratedNative(swiftDir: string, jsRoots: Set<string>): boolean {
   const segs = swiftDir.split(sep);
   if (!segs.includes("ios") && !segs.includes("android")) return false;
@@ -128,7 +113,6 @@ function isGeneratedNative(swiftDir: string, jsRoots: Set<string>): boolean {
   return false;
 }
 
-/** A shared-library location in a monorepo (not a deployable app). */
 function isLibraryPath(dir: string): boolean {
   return (
     dir.includes(`${sep}packages${sep}`) ||
@@ -161,10 +145,6 @@ function looksLikeMonorepoRoot(root: string): boolean {
   );
 }
 
-/**
- * Scan a directory (single app or monorepo) and return every paywall-capable
- * app found, with the generated native projects of RN/Expo apps filtered out.
- */
 export async function scanProject(root: string): Promise<ScanResult> {
   const opts = { cwd: root, ignore: IGNORE, deep: SCAN_DEPTH } as const;
   const [pkgPaths, xcodeProjects, packageSwifts, pubspecs] = await Promise.all([
@@ -180,8 +160,6 @@ export async function scanProject(root: string): Promise<ScanResult> {
   const apps: DetectedApp[] = [];
   const skipped: string[] = [];
 
-  // JS apps. Skip shared libraries (packages/*, libs/*) — they aren't apps,
-  // even when they pull in a frontend dep like react-dom.
   for (const dir of jsRoots) {
     if (isLibraryPath(dir)) continue;
     const c = classifyJs(dir);
@@ -189,7 +167,6 @@ export async function scanProject(root: string): Promise<ScanResult> {
     else if (dir !== root) skipped.push(basename(dir));
   }
 
-  // Native Swift apps (excluding generated native projects of JS apps)
   const swiftDirs = new Set<string>();
   for (const x of xcodeProjects) swiftDirs.add(dirname(join(root, x)));
   for (const s of packageSwifts) swiftDirs.add(dirname(join(root, s)));
@@ -198,13 +175,11 @@ export async function scanProject(root: string): Promise<ScanResult> {
     apps.push(makeApp(root, dir, { integration: Integration.swift, details: swiftUiKind(dir), score: 0.95 }));
   }
 
-  // Flutter apps
   for (const p of pubspecs) {
     const dir = dirname(join(root, p));
     apps.push(makeApp(root, dir, { integration: Integration.flutter, score: 0.9 }));
   }
 
-  // Dedup by path (keep highest score), then sort.
   const byPath = new Map<string, DetectedApp>();
   for (const app of apps) {
     const prev = byPath.get(app.path);
@@ -212,7 +187,6 @@ export async function scanProject(root: string): Promise<ScanResult> {
   }
   const deduped = [...byPath.values()].sort((a, b) => b.score - a.score);
 
-  // Web is detected but not yet supported — surface it separately as "coming soon".
   const supported = deduped.filter((a) => a.framework.supported);
   const comingSoon = deduped.filter((a) => !a.framework.supported);
 

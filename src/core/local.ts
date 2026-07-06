@@ -3,11 +3,6 @@ import { join } from "node:path";
 import { SuperwallApi } from "@/core/api/client";
 import { createEntitlement, createProduct, listResource, resolveScope, type Scope } from "@/core/api/resources";
 
-/**
- * Local-first "Monetization-as-Code": a `superwall.json` file is the source of
- * truth for entitlements + products; `pull` writes cloud → file, `plan` diffs,
- * `push` reconciles file → cloud (additive create — never destructive).
- */
 export interface LocalState {
   entitlements: Array<{ identifier: string }>;
   products: Array<{ identifier: string; name?: string }>;
@@ -30,7 +25,6 @@ export function writeLocal(dir: string, state: LocalState): void {
   writeFileSync(configPath(dir), JSON.stringify(state, null, 2) + "\n");
 }
 
-/** Fetch the cloud's entitlements + products for the resolved project. */
 export async function pull(api: SuperwallApi, scope?: Scope): Promise<LocalState> {
   const s = scope ?? (await resolveScope(api));
   const ents = await listResource(api, "entitlements", s);
@@ -44,11 +38,10 @@ export async function pull(api: SuperwallApi, scope?: Scope): Promise<LocalState
 }
 
 export interface Plan {
-  entitlements: string[]; // identifiers to create
+  entitlements: string[];
   products: string[];
 }
 
-/** Diff local file against the cloud — what `push` would create. */
 export async function plan(api: SuperwallApi, local: LocalState, scope?: Scope): Promise<Plan> {
   const s = scope ?? (await resolveScope(api));
   const cloud = await pull(api, s);
@@ -60,7 +53,6 @@ export async function plan(api: SuperwallApi, local: LocalState, scope?: Scope):
   };
 }
 
-/** Apply the plan (create missing). Returns what was created. */
 export async function push(api: SuperwallApi, local: LocalState, scope?: Scope): Promise<Plan> {
   const s = scope ?? (await resolveScope(api));
   const toDo = await plan(api, local, s);

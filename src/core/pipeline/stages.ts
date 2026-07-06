@@ -4,49 +4,27 @@ import { basename, join } from "node:path";
 import fg from "fast-glob";
 import { DASHBOARD_URL } from "@/constants";
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import { generateStoreKit } from "@/core/storekit";
 import { createAscConfig, listAscConfigs } from "@/core/api/asc";
-import { ascTypeDisplay, fetchUnimportedAscProducts, findAscAppId, listAscApps } from "@/core/api/ascProducts";
+import { ascTypeDisplay, fetchUnimportedAscProducts, findAscAppId, listAscApps } from "@/core/api/asc-products";
 import { createProduct, listResource, rowName, type Row, type Scope } from "@/core/api/resources";
 import type { SuperwallApi } from "@/core/api/client";
 
-/** Sentinel select value for "skip this". */
 const SKIP = "__skip__";
 
 export interface StageCtx {
   api: SuperwallApi;
   scope: Scope;
-  /** Detected local app name, for labels. */
   appName: string;
-  /** The app's store bundle id — used to match it in App Store Connect. */
   bundleId?: string;
-  /** The local app directory — used to detect `.storekit` files. */
   projectDir?: string;
-}
-
-async function withSpinner<T>(label: string, work: () => Promise<T>): Promise<T> {
-  const spin = ui.spinner();
-  spin.start(label);
-  try {
-    const result = await work();
-    spin.stop(label);
-    return result;
-  } catch (e) {
-    spin.stop("Failed");
-    throw e;
-  }
 }
 
 function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
-/**
- * Stage 3 · Products. Detect what's already in Superwall; otherwise help set
- * products up — connect App Store Connect (auto-import), add product ids by
- * hand, or generate a local `.storekit` file for testing.
- */
-/** A sub-flow either finishes or escapes back to its parent choice. */
 type Flow = "back" | "done";
 
 export async function runProductsStage(ctx: StageCtx): Promise<void> {
@@ -61,8 +39,6 @@ export async function runProductsStage(ctx: StageCtx): Promise<void> {
   if (products.length > 0) ui.success(`${count(products.length, "product")} already in Superwall.`);
   else ui.info("No products in Superwall yet.");
 
-  // The source picker is the choice point: pick a source, and if you Escape out
-  // of that sub-flow, you land right back here (e.g. picked ASC, meant StoreKit).
   for (;;) {
     const how = await ui.select({
       message: "How do you want to add products?",
@@ -88,12 +64,11 @@ export async function runProductsStage(ctx: StageCtx): Promise<void> {
     else if (how === "storekit") result = await importFromStoreKit(ctx, products, storeKitFiles);
     else if (how === "export") writeStoreKit(products);
 
-    if (result === "back") continue; // escaped the sub-flow → re-show the picker
+    if (result === "back") continue;
     return;
   }
 }
 
-/** Connect (if needed) then import from App Store Connect. */
 async function ascFlow(ctx: StageCtx, products: Row[], teamId: string | undefined): Promise<Flow> {
   let team = teamId;
   if (!team) {
@@ -104,7 +79,6 @@ async function ascFlow(ctx: StageCtx, products: Row[], teamId: string | undefine
   return importFromAsc(ctx, team, products);
 }
 
-/** `.storekit` config files inside the app dir (skipping build/vendor noise). */
 async function findStoreKitFiles(dir?: string): Promise<string[]> {
   if (!dir) return [];
   try {
@@ -120,7 +94,6 @@ async function findStoreKitFiles(dir?: string): Promise<string[]> {
   }
 }
 
-/** Import product identifiers out of a detected `.storekit` file into Superwall. */
 async function importFromStoreKit(ctx: StageCtx, existingProducts: Row[], files: string[]): Promise<Flow> {
   const { api, scope } = ctx;
 
@@ -169,7 +142,6 @@ async function importFromStoreKit(ctx: StageCtx, existingProducts: Row[], files:
   return "done";
 }
 
-/** Pull every product identifier out of a parsed `.storekit` JSON. */
 function storeKitProductIds(json: unknown): string[] {
   const ids = new Set<string>();
   const add = (arr: unknown) => {
@@ -182,7 +154,6 @@ function storeKitProductIds(json: unknown): string[] {
   return [...ids];
 }
 
-/** Superwall product identifiers already present, for dedup. */
 function existingIdSet(products: Row[]): Set<string> {
   return new Set(
     products.map((p) => {
@@ -192,11 +163,6 @@ function existingIdSet(products: Row[]): Set<string> {
   );
 }
 
-/**
- * Guided App Store Connect onboarding: walk the user through creating an ASC API
- * key and upload it to Superwall's vault. Returns the connected team id (used to
- * import products through the signed proxy) or null if they backed out.
- */
 async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
   const { api } = ctx;
 
@@ -211,9 +177,6 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
     "Connect App Store Connect",
   );
 
-  // Ask for the file first — we need it for the upload anyway, and the Key ID is
-  // in its name (AuthKey_<KEYID>.p8), so we usually don't have to ask for that.
-  // Re-prompt on a bad path instead of dropping the user out of the flow.
   let privateKey: string;
   let keyFilePath: string;
   for (;;) {
@@ -244,7 +207,6 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
     keyId = entered.trim();
   }
 
-  // Issuer + upload, retrying on failure — a typo shouldn't drop you out.
   for (;;) {
     const issuerId = await ui.text({
       message: "Issuer ID",
@@ -272,21 +234,14 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
   }
 }
 
-/** Apple names key files `AuthKey_<KEYID>.p8` — pull the Key ID out. */
+// Apple names key files `AuthKey_<KEYID>.p8`.
 function keyIdFromFilename(path: string): string | undefined {
   return basename(path).match(/AuthKey_([A-Za-z0-9]+)\.p8$/i)?.[1];
 }
 
-/**
- * Import App Store Connect products into Superwall — mirrors the dashboard's
- * "missing products detected" flow: walk subscriptions + IAPs, show what isn't
- * imported, let the user pick, and create them as Superwall products.
- */
 async function importFromAsc(ctx: StageCtx, teamId: string, existingProducts: Row[]): Promise<Flow> {
   const { api, scope, bundleId } = ctx;
 
-  // Match by bundle id; if there's no exact match (mismatched bundle, or a brand
-  // new app), let the user pick from their App Store Connect apps — or go back.
   let ascAppId = bundleId
     ? await withSpinner("Finding your app in App Store Connect", () => findAscAppId(api, teamId, bundleId))
     : undefined;
@@ -345,7 +300,6 @@ function expandHome(p: string): string {
   return p.startsWith("~") ? join(homedir(), p.slice(1)) : p;
 }
 
-/** Normalize a pasted/dragged file path: strip wrapping quotes + escaped spaces. */
 function cleanPath(input: string): string {
   let s = input.trim();
   if (s.length >= 2 && ((s[0] === "'" && s.endsWith("'")) || (s[0] === '"' && s.endsWith('"')))) {
@@ -355,10 +309,6 @@ function cleanPath(input: string): string {
   return expandHome(s.trim());
 }
 
-/**
- * Stage 5 · Paywall. Designing the paywall is visual — point the user at the
- * editor / dashboard (and the `superwall-editor` skill their agent now has).
- */
 export function runPaywallStage(): void {
   ui.note(
     [
@@ -373,10 +323,6 @@ export function runPaywallStage(): void {
   );
 }
 
-/**
- * Stage 6 · Verify. Summarize readiness from what we can see, and tell the user
- * how to prove it on device.
- */
 export async function runVerifyStage(ctx: StageCtx): Promise<void> {
   const { api, scope } = ctx;
   const [products, campaigns] = await withSpinner("Verifying setup", async () => [

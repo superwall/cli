@@ -1,11 +1,7 @@
 import { DASHBOARD_URL } from "@/constants";
 import type { ActionContext, WizardAction } from "@/core/actions";
 
-/**
- * A clean, self-contained version of the action prompt for the user to paste
- * into their own coding agent. Same content, minus the wizard-internal
- * `[STATUS]` progress protocol (irrelevant outside our headless runner).
- */
+// Strips the wizard-internal `[STATUS]` protocol, which is meaningless outside the headless runner.
 export function buildCopyPrompt(action: WizardAction, ctx: ActionContext): string {
   return buildActionPrompt(action, ctx)
     .split("\n")
@@ -14,7 +10,6 @@ export function buildCopyPrompt(action: WizardAction, ctx: ActionContext): strin
     .trimEnd();
 }
 
-/** Assemble the prompt for an action: project context + the action's skill body. */
 export function buildActionPrompt(action: WizardAction, ctx: ActionContext): string {
   return [
     `# ${action.title} — ${ctx.app.framework.name}`,

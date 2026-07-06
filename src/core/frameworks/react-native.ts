@@ -1,6 +1,5 @@
 import { Integration } from "@/constants";
 import type { Framework } from "./index";
-import { allDeps, readPackageJson } from "./detect-helpers";
 
 export const reactNativeFramework: Framework = {
   integration: Integration.reactNative,
@@ -8,15 +7,6 @@ export const reactNativeFramework: Framework = {
   supported: true,
   sdkPackage: "@superwall/react-native-superwall",
   docsUrl: "https://superwall.com/docs/react-native",
-
-  async detect(dir) {
-    const deps = allDeps(readPackageJson(dir));
-    // Bare RN only — Expo is handled by its own (higher-confidence) detector.
-    if ("react-native" in deps && !("expo" in deps)) {
-      return { score: 0.85, details: deps["react-native"] };
-    }
-    return { score: 0 };
-  },
 
   promptSnippet() {
     return [

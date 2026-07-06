@@ -5,7 +5,6 @@ import { codexDriver } from "./codex";
 export * from "./types";
 export { claudeDriver, codexDriver };
 
-/** All drivers, in default preference order. */
 export const ALL_DRIVERS: AgentDriver[] = [claudeDriver, codexDriver];
 
 export interface DetectedDriver {
@@ -13,7 +12,6 @@ export interface DetectedDriver {
   info: DriverInfo;
 }
 
-/** Detect every installed agent CLI, preserving preference order. */
 export async function detectDrivers(): Promise<DetectedDriver[]> {
   const results = await Promise.all(
     ALL_DRIVERS.map(async (driver) => {

@@ -18,11 +18,8 @@ export type ItemKind =
 export interface TimelineItem {
   id: number;
   kind: ItemKind;
-  /** Body text (may contain newlines). */
   text: string;
-  /** Optional heading for note/report blocks. */
   title?: string;
-  /** Structured payload for `list` items. */
   list?: { items: ListItem[]; empty?: string };
 }
 

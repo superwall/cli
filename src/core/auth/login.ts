@@ -1,5 +1,5 @@
 import { API_HOST, AUTH_HOST, CLI_CLIENT_ID, CLI_KEY_SCOPES, OAUTH_SCOPE } from "@/constants";
-import { openBrowser } from "./loopback";
+import { openBrowser } from "./browser";
 import { saveSession, type Session } from "./storage";
 
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
@@ -28,22 +28,14 @@ export interface LoginOptions {
   issuer?: string;
   apiHost?: string;
   clientId?: string;
-  /** Called once we have the approval URL + user code (so the UI can show them). */
   onVerify?: (info: { url: string; userCode: string }) => void;
   onStatus?: (message: string) => void;
-  /** Choose an org when the account has more than one. Omit → first org. */
   onSelectOrg?: (orgs: LoginOrg[]) => Promise<LoginOrg | null>;
-  /** Prompt a brand-new user to name their first organization (registration). */
   onCreateOrg?: () => Promise<string | null>;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * OAuth 2.0 Device Authorization Grant against auth.superwall.com, then mint a
- * long-lived `sk_` org key named "Superwall CLI". No loopback/redirect needed —
- * open the browser, approve, poll, done.
- */
 export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
   const issuer = opts.issuer ?? AUTH_HOST;
   const apiHost = opts.apiHost ?? API_HOST;
@@ -62,17 +54,16 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
   const { accessToken, refreshToken } = await pollForToken(disc.token_endpoint, clientId, dev, opts.onStatus);
   let apiToken = accessToken;
 
-  // Identity + org (needed to scope the key).
   const me = (await getJson(`${apiHost}/v2/me`, apiToken).catch(() => null)) as { email?: string } | null;
   let orgList: LoginOrg[] = [];
   try {
     const res = (await getJson(`${apiHost}/v2/me/organizations`, apiToken)) as { data: LoginOrg[] };
     orgList = res.data ?? [];
   } catch {
-    // A 401/empty here typically means a brand-new account with no org yet.
+    // A brand-new account has no org yet.
     orgList = [];
   }
-  // Dedupe duplicate memberships; keep only orgs where we can mint a key (ADMIN+).
+  // Keep only orgs where we can mint a key (ADMIN+).
   const uniqueOrgs = [...new Map(orgList.map((o) => [String(o.id), o])).values()].filter(
     (o) => o.role === "OWNER" || o.role === "ADMIN",
   );
@@ -80,7 +71,6 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
   let org: LoginOrg;
   let createdNewOrg = false;
   if (uniqueOrgs.length === 0) {
-    // New account → register by creating the first organization.
     if (!opts.onCreateOrg) {
       throw new Error("Your account has no organization yet — run `superwall login` interactively to create one.");
     }
@@ -101,16 +91,13 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
     org = picked;
   }
 
-  // The API caches the auth context for 60s keyed by the token. Since we just
-  // created the org, that cached context predates the membership — refresh the
-  // token (new key) so the key-mint sees the new org immediately.
+  // The API caches auth context for 60s per token; refresh so the key-mint sees the new org.
   if (createdNewOrg && refreshToken) {
     opts.onStatus?.("Activating your organization…");
     const fresh = await refreshAccessToken(disc.token_endpoint, clientId, refreshToken);
     if (fresh) apiToken = fresh;
   }
 
-  // Mint the long-lived CLI key.
   opts.onStatus?.("Creating your Superwall CLI key…");
   const token = await createCliKey(apiHost, org.id, apiToken);
 
@@ -189,8 +176,7 @@ async function pollForToken(
 }
 
 async function createCliKey(apiHost: string, orgId: number | string, accessToken: string): Promise<string> {
-  // A just-created org can lag the 60s auth-context cache — retry the
-  // membership error a few times so onboarding doesn't fail on a race.
+  // A just-created org can lag the auth-context cache; retry the membership error a few times.
   for (let attempt = 0; attempt < 5; attempt++) {
     const r = await fetch(`${apiHost}/v2/organizations/${orgId}/access/api-keys`, {
       method: "POST",

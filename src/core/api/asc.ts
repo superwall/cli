@@ -4,7 +4,7 @@ import type { Row } from "./resources";
 export interface AscCredentials {
   keyId: string;
   issuerId: string;
-  /** Raw PKCS#8 PEM contents of the .p8 downloaded from App Store Connect. */
+  /** PKCS#8 PEM contents of the ASC .p8 key. */
   privateKey: string;
   accountName?: string;
 }
@@ -33,12 +33,7 @@ export function deleteAscConfig(api: SuperwallApi, teamId: string): Promise<{ su
   return api.del<{ success: boolean }>(`${ascBase(api)}/${teamId}`);
 }
 
-/**
- * Call the App Store Connect API through Superwall's signed reverse proxy
- * (`/app-store-connect/proxy/:team_id/*`), which signs each request with the
- * org's stored ASC key — so no .p8, no JWT signing, no ASC CLI needed locally.
- * `ascPath` is an ASC API path, e.g. `/v1/apps`.
- */
+// Superwall's proxy signs each request with the org's stored ASC key, so no local .p8/JWT signing.
 export function ascProxy<T>(
   api: SuperwallApi,
   teamId: string,
@@ -61,7 +56,6 @@ export function ascProxy<T>(
   }
 }
 
-/** GET shortcut for the ASC proxy. */
 export function ascProxyGet<T>(api: SuperwallApi, teamId: string, ascPath: string): Promise<T> {
   return ascProxy<T>(api, teamId, "GET", ascPath);
 }

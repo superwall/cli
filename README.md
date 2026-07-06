@@ -1,11 +1,13 @@
-# Superwall wizard
+# Superwall CLI
 
-Set up Superwall in your app in one command — driven by the coding agent you
-already have installed.
+Set up and manage Superwall from your terminal (and your coding agent) — one
+binary, keyless, install-free.
 
 ```bash
-npx @superwall/wizard
+npx superwall            # or: npx superwall integrate
 ```
+
+Installs two commands: `superwall` and the short alias `sw`.
 
 ## The flow
 
@@ -37,8 +39,8 @@ Onboarding (agent-driven):
 
 | Command | Description |
 | --- | --- |
-| `superwall` | Full pipeline: integrate → placements → products → campaigns → verify. |
-| `superwall integrate` | Install + configure the SDK, add a placement. |
+| `superwall` | Shows help. |
+| `superwall integrate` (alias `wizard`) | Full pipeline: SDK → products → campaigns & placements → paywall → verify. |
 | `superwall placements review \| implement` | Audit / add `register()` calls at the right gates. |
 | `superwall dashboard` | Create a campaign + placement so paywalls present. |
 | `superwall migrate` | Migrate from RevenueCat / Adapty / Qonversion. |
@@ -53,6 +55,7 @@ The dashboard, in your terminal (`--json` on all; auto-scoped by project/app):
 | `superwall campaigns [list \| create <desc> \| placement <id> <name>]` | Campaigns + placements. |
 | `superwall paywalls list` | Paywalls. |
 | `superwall secrets <set \| list \| rm> app-store-connect …` | App Store Connect API key (for auto product import). |
+| `superwall asc <get\|post\|…> /v1/… ` / `asc apps \| products <app>` | The App Store Connect API via Superwall's signed proxy — no `.p8`/JWT needed. |
 
 Local-first (Monetization-as-Code — `superwall.json` ↔ cloud):
 
@@ -67,7 +70,7 @@ Global flags: `--json`, `--dry-run`, `--install-dir <dir>`, `--project <id>`, `-
 ## Testing
 
 ```bash
-pnpm test    # tsx --test (Node's built-in runner, zero extra install)
+bun test     # node:test via tsx
 ```
 
 ## Two kinds of skills
@@ -95,25 +98,35 @@ renders identical live progress regardless of which agent ran.
 ## Architecture
 
 ```
+bin.ts                   executable entry (Node ≥20 guard → src/cli)
 src/
   cli.ts                 yargs command surface
+  command.ts             defineCommand: shared lifecycle + renderer selection
   constants.ts           branding + Integration enum
-  commands/              integrate (default), mcp, doctor
+  commands/              one file per command (integrate, asc, auth, doctor, …)
   core/
-    drivers/             agent abstraction: claude, codex, detection, spawn
-    detection/           framework detection + scoring
-    frameworks/          per-platform detect() + prompt snippets
+    api/                 typed Superwall + App Store Connect (proxy) clients
+    actions/             bundled agent actions (integrate, placements, migrate)
     agent/               commandments, prompt assembly, run, fallback
-  ui/                    branded clack/log helpers
+    auth/                device-flow OAuth + session storage
+    detection/           monorepo-aware app + framework detection
+    drivers/             agent abstraction: claude, codex, spawn
+    frameworks/          per-platform detect() + prompt snippets
+    pipeline/            dashboard stages (products, paywall, verify)
+    skills/              bundled-skill install + loading
+  ui/                    Ink (interactive) + plain (agent) renderers behind one facade
+  util/                  clipboard, env, params, api-output
+skills/                  bundled agent skills (integrate / migrate / placements)
 ```
 
 ## Develop
 
 ```bash
-pnpm install
-pnpm dev          # tsx bin.ts — run from source
-pnpm build        # tsdown → dist/
-pnpm typecheck
+bun install
+bun dev           # run from source (bun bin.ts)
+bun run build     # tsdown → dist/
+bun run typecheck
+bun run link:global   # build + link `superwall` and `sw` globally
 ```
 
 ## Roadmap

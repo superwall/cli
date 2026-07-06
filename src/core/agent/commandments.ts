@@ -1,8 +1,3 @@
-/**
- * System-prompt rules appended to whichever agent runs. These bound an
- * inherently non-deterministic process — keep them short, imperative, and
- * driver-agnostic (Claude appends via flag; Codex folds them into the prompt).
- */
 const COMMANDMENTS = [
   "You are integrating Superwall into the user's app. Make the smallest set of edits that achieves a working, verifiable integration. Do not refactor unrelated code or reformat files.",
 

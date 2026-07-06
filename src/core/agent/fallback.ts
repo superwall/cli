@@ -1,11 +1,7 @@
 import { ui } from "@/ui";
-import { SUPPORTED_LABEL } from "@/constants";
+import { SUPPORTED_LABEL } from "@/core/detection/framework";
 import { scanProject } from "@/core/detection/scan";
 
-/**
- * No coding agent is installed. We can't run an LLM, so deterministically detect
- * the project and print precise manual steps, plus a nudge to install an agent.
- */
 export async function runFallback(installDir: string): Promise<void> {
   const scan = await scanProject(installDir);
   const top = scan.apps[0];

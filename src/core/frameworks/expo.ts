@@ -1,6 +1,5 @@
 import { Integration } from "@/constants";
 import type { Framework } from "./index";
-import { allDeps, fileExists, readPackageJson } from "./detect-helpers";
 
 export const expoFramework: Framework = {
   integration: Integration.expo,
@@ -8,15 +7,6 @@ export const expoFramework: Framework = {
   supported: true,
   sdkPackage: "expo-superwall",
   docsUrl: "https://superwall.com/docs/expo",
-
-  async detect(dir) {
-    const deps = allDeps(readPackageJson(dir));
-    const hasExpo = "expo" in deps;
-    const hasConfig = fileExists(dir, "app.json") || fileExists(dir, "app.config.ts") || fileExists(dir, "app.config.js");
-    if (hasExpo) return { score: 0.92, details: deps.expo };
-    if (hasConfig && "react-native" in deps) return { score: 0.6 };
-    return { score: 0 };
-  },
 
   promptSnippet() {
     return [

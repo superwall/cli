@@ -1,4 +1,3 @@
-import React from "react";
 import { render, type Instance } from "ink";
 import { App } from "./App";
 import { addItem, addList, reset, setActive, updateActive } from "./store";
@@ -6,7 +5,6 @@ import type { MultiSelectOpts, Renderer, SelectOpts, Spinner, TextOpts } from ".
 
 let instance: Instance | null = null;
 
-/** Mount the Ink app. Call once at the start of a flow. */
 function start(): void {
   if (!instance) {
     reset();
@@ -14,7 +12,6 @@ function start(): void {
   }
 }
 
-/** Unmount and let the process exit. Call once at the end of a flow. */
 function stop(): void {
   if (instance) {
     instance.unmount();
@@ -22,7 +19,6 @@ function stop(): void {
   }
 }
 
-/** The rich, interactive backend — a live Ink timeline. TTY only. */
 export const inkRenderer: Renderer = {
   start,
   stop,
@@ -49,7 +45,6 @@ export const inkRenderer: Renderer = {
   },
 
   select(o: SelectOpts): Promise<string | null> {
-    // Open on the requested option if it's selectable, else the first enabled one.
     const preferred = o.options.findIndex((x) => x.value === o.initialValue && !x.disabled);
     const index = preferred >= 0 ? preferred : Math.max(0, o.options.findIndex((x) => !x.disabled));
     return new Promise((resolve) =>

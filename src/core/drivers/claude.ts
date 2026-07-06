@@ -10,7 +10,6 @@ import { onPath, readVersion, spawnStream } from "./spawn";
 
 const BIN = "claude";
 
-/** Summarize a tool_use block into a one-line human label. */
 function toolSummary(name: string, input: unknown): string {
   const i = (input ?? {}) as Record<string, unknown>;
   if (typeof i.file_path === "string") return `${name} ${basename(i.file_path)}`;
@@ -19,7 +18,6 @@ function toolSummary(name: string, input: unknown): string {
   return name;
 }
 
-/** Pull "[STATUS] ..." lines out of assistant text. */
 function extractStatus(text: string): string | undefined {
   const m = text.match(/\[STATUS\]\s*(.+?)\s*$/m);
   return m?.[1]?.trim();
@@ -67,17 +65,6 @@ export const claudeDriver: AgentDriver = {
     if (opts.systemAppend) {
       args.push("--append-system-prompt", opts.systemAppend);
     }
-    if (opts.mcpServers && Object.keys(opts.mcpServers).length) {
-      const cfg = {
-        mcpServers: Object.fromEntries(
-          Object.entries(opts.mcpServers).map(([name, s]) => [
-            name,
-            { type: "http", url: s.url, ...(s.headers ? { headers: s.headers } : {}) },
-          ]),
-        ),
-      };
-      args.push("--mcp-config", JSON.stringify(cfg));
-    }
 
     let finalText: string | undefined;
     let ok = false;
@@ -92,7 +79,7 @@ export const claudeDriver: AgentDriver = {
         try {
           msg = JSON.parse(line);
         } catch {
-          return; // non-JSON noise
+          return;
         }
         if (msg.type === "assistant") {
           emitAssistant((msg as { message?: unknown }).message, opts.onEvent);
@@ -101,9 +88,7 @@ export const claudeDriver: AgentDriver = {
           ok = msg.subtype === "success" && msg.is_error !== true;
         }
       },
-      onStderrLine: () => {
-        /* swallowed; surfaced via debug later */
-      },
+      onStderrLine: () => {},
     });
 
     if (code !== 0 && !ok) {

@@ -37,10 +37,8 @@ function symbolFor(kind: ItemKind): { char: string; color?: string; dim?: boolea
   }
 }
 
-/** Render one line of markdown-ish text into styled Ink spans. */
 function Inline({ line }: { line: string }): React.ReactElement {
-  // Headers render as crisp bold white; the brand cyan is reserved for `code`
-  // and UI accents (symbols, selections) so titles don't read as muddy teal.
+  // Brand cyan is reserved for `code` and accents so bold headers don't read as muddy teal.
   const header = line.match(/^\s*#{1,6}\s+(.*)$/);
   if (header) return <Text bold>{header[1]}</Text>;
 
@@ -80,8 +78,6 @@ function ReportBlock({ text }: { text: string }): React.ReactElement {
 
 function NoteBlock({ title, text }: { title?: string; text: string }): React.ReactElement {
   const lines = text.split("\n");
-  // Box height = content lines + 2 borders + 2 vertical padding rows; render a
-  // matching column of gutter bars beside it so the tree line stays continuous.
   const gutterHeight = lines.length + 4;
   return (
     <Box flexDirection="column">
@@ -111,10 +107,6 @@ function NoteBlock({ title, text }: { title?: string; text: string }): React.Rea
   );
 }
 
-/**
- * A structured list: bright primary labels, dimmed ids/tags, dimmed child rows
- * hung off a continuous `│` gutter. Names lead; ids are secondary by design.
- */
 function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): React.ReactElement {
   if (items.length === 0) {
     return (
@@ -132,8 +124,7 @@ function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): Rea
         return (
           <Box key={i} flexDirection="column">
             <Box>
-              {/* symbol + 2-space gap, matching TimelineRow so labels align
-                  under the ◇ header's text column (and the │ child gutter). */}
+              {/* symbol + 2-space gap matches TimelineRow so labels align under the header column. */}
               <Text color={PRIMARY}>●</Text>
               <Text>{"  "}</Text>
               <Text>{it.label}</Text>
@@ -146,8 +137,7 @@ function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): Rea
                 <Text dimColor>{[c.badge, c.label, c.meta].filter(Boolean).join("  ")}</Text>
               </Box>
             ))}
-            {/* Connector to the next row — omitted after the last so the tree
-                doesn't dangle as if more is coming. */}
+            {/* Connector omitted after the last row so the tree doesn't dangle. */}
             {!isLast ? <Text dimColor>│</Text> : null}
           </Box>
         );
@@ -197,7 +187,6 @@ function TimelineRow({ item }: { item: TimelineItem }): React.ReactElement {
   );
 }
 
-/** Push the resolved summary into the timeline and clear the active widget. */
 function finish(message: string, chosen: string): void {
   addItem("step", `${message}\n${chosen}`);
   setActive(null);
@@ -216,7 +205,6 @@ function SpinnerView({ message }: { message: string }): React.ReactElement {
 
 function SelectView({ active }: { active: Extract<Active, { type: "select" }> }): React.ReactElement {
   const n = active.options.length;
-  // Step to the next selectable option, skipping any that are disabled.
   const nextEnabled = (from: number, dir: 1 | -1): number => {
     for (let step = 1; step <= n; step++) {
       const i = (from + dir * step + n * step) % n;
@@ -263,7 +251,6 @@ function SelectView({ active }: { active: Extract<Active, { type: "select" }> })
   );
 }
 
-/** A dim key-hint line hung off the gutter, e.g. "esc back". */
 function Footer({ text }: { text?: string }): React.ReactElement | null {
   if (!text) return null;
   return (

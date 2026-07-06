@@ -4,7 +4,6 @@ import type { DetectedApp } from "./scan";
 import { allDeps, readPackageJson } from "@/core/frameworks/detect-helpers";
 
 export interface BillingDetection {
-  /** RevenueCat present → offer migration / paywalls-only path. */
   revenueCat: boolean;
   adapty: boolean;
   qonversion: boolean;
@@ -12,7 +11,6 @@ export interface BillingDetection {
 
 const IGNORE = ["**/node_modules/**", "**/.git/**", "**/Pods/**", "**/build/**", "**/.build/**", "**/dist/**"];
 
-/** Detect an existing in-app-purchase / billing SDK in the app. */
 export function detectBilling(app: DetectedApp): BillingDetection {
   const deps = allDeps(readPackageJson(app.path));
   const inDeps = (names: string[]) => names.some((n) => n in deps);
