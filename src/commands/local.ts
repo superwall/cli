@@ -1,6 +1,6 @@
 import type { Arguments } from "yargs";
 import { SuperwallApi } from "@/core/api/client";
-import { CONFIG_FILE, plan as planLocal, pull, push, readLocal, writeLocal } from "@/core/local";
+import { CONFIG_FILE, plan as planLocal, pull, push, readLocal, writeLocal } from "@/core/dashboard/local";
 import { ui } from "@/ui";
 import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";

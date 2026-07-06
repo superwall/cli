@@ -1,15 +1,15 @@
 import { DASHBOARD_URL, VERSION } from "@/constants";
-import { SUPPORTED_LABEL } from "@/core/detection/framework";
+import { SUPPORTED_LABEL } from "@/core/project/frameworks";
 import { stripReport } from "@/ui/log";
 import { ui } from "@/ui";
 import { withSpinner } from "@/ui/spinner";
 import { defineCommand, type CommandContext } from "@/command";
 import { isNonInteractive } from "@/util/env";
-import { loadReport, saveReport } from "@/core/reports";
-import { detectDrivers, type AgentDriver } from "@/core/drivers";
-import { scanProject, type DetectedApp } from "@/core/detection/scan";
-import { detectExisting, type ExistingIntegration } from "@/core/detection/existing";
-import { detectBilling } from "@/core/detection/billing";
+import { loadReport, saveReport } from "@/core/state/reports";
+import { detectDrivers, type AgentDriver } from "@/core/agent/drivers";
+import { scanProject, type DetectedApp } from "@/core/project/scan";
+import { detectExisting, type ExistingIntegration } from "@/core/project/existing";
+import { detectBilling } from "@/core/project/billing";
 import { resolveAccount } from "@/core/account";
 import { resolveAppBinding, resolveScopeFromKey, platformForIntegration } from "@/core/account/bind";
 import { performLogin } from "@/core/auth/login";
@@ -17,13 +17,13 @@ import { loadSession } from "@/core/auth/storage";
 import { SuperwallApi } from "@/core/api/client";
 import { discoverPublicApiKey } from "@/core/api/discover";
 import { listResource, platformLabel, rowName, titleCase, type Row, type Scope } from "@/core/api/resources";
-import { installToolkit, installBundledSkills } from "@/core/skills/install";
-import { runProductsStage, runPaywallStage, runVerifyStage, type StageCtx } from "@/core/pipeline/stages";
+import { installToolkit, installBundledSkills } from "@/core/agent/skills";
+import { runProductsStage, runPaywallStage, runVerifyStage, type StageCtx } from "@/core/dashboard/stages";
 import { runAction } from "@/core/agent/run";
 import { buildCopyPrompt } from "@/core/agent/prompt";
 import { copyToClipboard } from "@/util/clipboard";
 import { runFallback } from "@/core/agent/fallback";
-import { ACTIONS, actionById, type ActionContext, type ActionId, type WizardAction } from "@/core/actions";
+import { ACTIONS, actionById, type ActionContext, type ActionId, type WizardAction } from "@/core/agent/actions";
 
 export const runIntegrate = defineCommand(runPipeline);
 
@@ -67,7 +67,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
 
   // Login is lazy: only the dashboard stages need the org session — never gate the SDK step on it.
   let session = loadSession();
-  if (session) process.env.SUPERWALL_API_KEY = session.apiKey;
+  if (session?.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
 
   // Resolve the app scope in the background so the dashboard stages don't wait on it mid-flow.
   let scopePromise: ReturnType<typeof resolveScopeFromKey> | null = null;
@@ -96,7 +96,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
         },
       });
       spin.stop(`Signed in as ${session.userEmail ?? "you"}`);
-      process.env.SUPERWALL_API_KEY = session.apiKey;
+      if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
       return true;
     } catch (e) {
       spin.stop("Sign-in failed");

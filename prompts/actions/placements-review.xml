@@ -1,0 +1,21 @@
+<task>
+Audit this app's Superwall placement usage. DO NOT modify any files.
+{{#campaigns}}
+
+<current_campaigns>
+{{campaigns}}
+</current_campaigns>
+
+Cross-reference these with the app's register() calls: flag placements in code that aren't on any campaign, and campaigns with no matching trigger in code.
+{{/campaigns}}
+
+{{skill}}
+
+<report>
+Produce a concise final report with SHORT lines (wrap ~80 chars), as markdown bullets:
+- Placements found — one line each: `name — file:line — context`.
+- Issues — each with a one-line fix.
+- Suggested missing placements.
+- Final line: overall health (good / needs work).
+</report>
+</task>

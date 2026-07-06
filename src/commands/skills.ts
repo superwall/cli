@@ -1,6 +1,6 @@
 import { ui } from "@/ui";
 import { defineCommand } from "@/command";
-import { KNOWN_SKILLS, SUPERWALL_SKILLS_SOURCE, installToolkit, installBundledSkills } from "@/core/skills/install";
+import { KNOWN_SKILLS, SUPERWALL_SKILLS_SOURCE, installToolkit, installBundledSkills } from "@/core/agent/skills";
 
 export const runSkills = defineCommand(async (ctx) => {
   ui.intro("Superwall agent toolkit");

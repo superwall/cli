@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import type { Arguments } from "yargs";
 import { ApiError, SuperwallApi } from "@/core/api/client";
-import { generateStoreKit } from "@/core/storekit";
+import { generateStoreKit } from "@/core/dashboard/storekit";
 import {
   addPlacement,
   createApplication,
@@ -24,7 +24,7 @@ import {
   type Scope,
   type SubscriptionPeriod,
 } from "@/core/api/resources";
-import { getDefaultApp, setDefaultApp } from "@/core/config";
+import { getDefaultApp, setDefaultApp } from "@/core/state/config";
 import { defineCommand, type CommandContext } from "@/command";
 
 interface PickedScope extends Scope {

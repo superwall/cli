@@ -1,6 +1,6 @@
 import { ui } from "@/ui";
-import { SUPPORTED_LABEL } from "@/core/detection/framework";
-import { scanProject } from "@/core/detection/scan";
+import { SUPPORTED_LABEL } from "@/core/project/frameworks";
+import { scanProject } from "@/core/project/scan";
 
 export async function runFallback(installDir: string): Promise<void> {
   const scan = await scanProject(installDir);

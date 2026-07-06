@@ -1,0 +1,136 @@
+# Superwall placements — Flutter
+
+> Read `references/strategy.md` first for *where* placements go and *why* (the core
+> set, app-type playbook, audit method, gate depth). This file is the Flutter API.
+
+## API
+
+```dart
+import 'package:superwallkit_flutter/superwallkit_flutter.dart';
+
+Future<void> registerPlacement(
+  String placement, {
+  Map<String, Object>? params,
+  PaywallPresentationHandler? handler,
+  Function()? feature,
+})
+```
+
+Called as `Superwall.shared.registerPlacement(...)`. Async — `await` it. `params`
+values are available in campaign audience rules; keys starting with `$` are
+reserved and dropped. The `feature` callback is your gate; gating configuration
+lives in the dashboard.
+
+### Gated feature
+
+```dart
+await Superwall.shared.registerPlacement(
+  'unlock_export',
+  params: {'source': 'editor_toolbar'},
+  feature: () {
+    exportDocument();   // runs only when access is granted
+  },
+);
+```
+
+### Fire-and-forget
+
+```dart
+await Superwall.shared.registerPlacement('onboarding_complete');
+```
+
+### With a presentation handler (lifecycle observation)
+
+```dart
+final handler = PaywallPresentationHandler();
+handler.onPresent((info) => debugPrint('presented ${info.name}'));
+handler.onDismiss((info, result) => debugPrint('dismissed $result'));
+handler.onError((error) => debugPrint('error $error'));
+handler.onSkip((reason) => debugPrint('skipped $reason'));
+
+await Superwall.shared.registerPlacement(
+  'unlock_export',
+  handler: handler,
+  feature: () => exportDocument(),
+);
+```
+
+Keep gated work in `feature`; use the handler for analytics/UI only.
+
+## Feature-gating semantics
+
+When the `feature` callback runs (per the paywall's Feature Gating setting in the
+dashboard — editor → General → Feature Gating):
+
+| Situation | Does `feature` run? |
+|---|---|
+| No campaign matches | Yes, immediately (no network, no paywall) |
+| User already subscribed | Yes, immediately (entitlement verified server-side) |
+| Holdout / no audience match | Yes, immediately (per current subscription state) |
+| Paywall shown, **Non-Gated**, dismissed | Yes — whether or not they paid |
+| Paywall shown, **Gated**, dismissed without purchase | No — feature blocked |
+| User purchases | Yes, after the transaction |
+
+**Gated** = paid-only; **Non-Gated** = show paywall, let them through either way.
+Same `registerPlacement` call for both; the dashboard decides.
+
+## Where to place — one realistic gate
+
+`onTap` / `onPressed`, limit-reached:
+
+```dart
+ElevatedButton(
+  onPressed: () async {
+    if (projects.length < freeLimit) {
+      createProject();
+      return;
+    }
+    await Superwall.shared.registerPlacement(
+      'project_limit_reached',
+      feature: () => createProject(),
+    );
+  },
+  child: const Text('New project'),
+)
+```
+
+## Audit checklist
+
+- Find every call: `grep -rn "registerPlacement" lib/`.
+- Paywalled work is passed as `feature`, not run unconditionally after the `await`.
+- No manual entitlement `if` (e.g. reaching into `getEntitlements` / `CustomerInfo`)
+  wrapping the register call — register always, let gating decide.
+- Names are `snake_case`, stable, non-duplicated, and match dashboard campaigns.
+- Cross-check with `superwall campaigns list --json`: every registered placement is
+  on a campaign; flag campaign placements never registered and vice versa.
+- Obvious premium boundaries (upgrade buttons, gated actions, quota limits,
+  onboarding end) with no placement.
+
+## Dashboard routing
+
+```bash
+superwall campaigns list --json
+superwall campaigns create "Editor upgrade paywall"
+superwall campaigns placement <campaignId> unlock_export
+```
+
+## Pitfalls
+
+- **Registering inside `build`.** Never call `registerPlacement` from a widget's
+  `build` method — it re-fires on every rebuild. Call it from a callback
+  (`onPressed`/`onTap`) or a one-shot `initState`.
+- **Missing `await`.** `registerPlacement` returns `Future<void>`; without `await`
+  errors go unhandled and follow-up work can't be sequenced.
+- **Registering before configure.** Ensure `Superwall.configure(apiKey)` has run
+  before any `registerPlacement`; earlier calls are dropped.
+- **Gating twice.** Don't combine a manual entitlement check with `feature` — it
+  double-gates and breaks Non-Gated experiments.
+
+## Deeper docs
+
+- Index: https://superwall.com/docs/flutter/llms.txt
+- register: https://superwall.com/docs/flutter/sdk-reference/register
+- Feature gating: https://superwall.com/docs/flutter/quickstart/feature-gating
+- Presentation handler: https://superwall.com/docs/flutter/guides/advanced/using-the-presentation-handler
+- Tracking subscription state: https://superwall.com/docs/flutter/quickstart/tracking-subscription-state
+- Deep links: https://superwall.com/docs/flutter/guides/handling-deep-links

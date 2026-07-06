@@ -18,6 +18,7 @@
   "files": [
     "dist",
     "skills",
+    "prompts",
     "package.json",
     "README.md"
   ],
@@ -29,7 +30,7 @@
     "build": "tsdown",
     "watch": "tsdown --watch",
     "dev": "bun bin.ts",
-    "test": "bun --bun tsx --test src/**/*.test.ts",
+    "test": "tsx --test 'tests/**/*.test.ts'",
     "link:global": "tsdown && bun link",
     "typecheck": "tsc --noEmit"
   },

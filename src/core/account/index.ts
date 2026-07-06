@@ -1,7 +1,7 @@
 import type { Arguments } from "yargs";
 import { ui } from "@/ui";
 import { apiKeyFromEnv, isNonInteractive } from "@/util/env";
-import type { ExistingIntegration } from "@/core/detection/existing";
+import type { ExistingIntegration } from "@/core/project/existing";
 
 export type AccountMode = "existing-key" | "sign-in" | "sign-up";
 

@@ -45,6 +45,12 @@ Onboarding (agent-driven):
 | `superwall dashboard` | Create a campaign + placement so paywalls present. |
 | `superwall migrate` | Migrate from RevenueCat / Adapty / Qonversion. |
 
+Every workflow above also takes `--skill`: instead of the CLI orchestrating an
+agent, it prints the full expert playbook — the bundled skill plus the reference
+matching *this* project's detected framework/provider — so your own agent can
+follow it directly (e.g. `superwall migrate --skill` in a RevenueCat Expo app
+prints the migrate skill + the RevenueCat reference).
+
 The dashboard, in your terminal (`--json` on all; auto-scoped by project/app):
 
 | Command | Description |
@@ -73,15 +79,28 @@ Global flags: `--json`, `--dry-run`, `--install-dir <dir>`, `--project <id>`, `-
 bun test     # node:test via tsx
 ```
 
-## Two kinds of skills
+## Skills are the product
 
-- **Internal actions** — bundled *inside* the CLI (`src/core/actions/`). They are
-  the wizard's own flow instructions (integrate, review/implement placements,
-  dashboard setup), inlined into the agent prompt at run time. Never remote.
-- **Public skills** — [`superwall/skills`](https://github.com/superwall/skills),
-  installable by anyone via `npx skills add superwall/skills`. `superwall skills`
-  installs them globally (canonical `~/.agents/skills` + per-agent symlinks) so
-  your own agent keeps the Superwall toolkit after the wizard exits.
+Agent-facing expertise is split across two homes by breadth:
+
+- **[`superwall/skills`](https://github.com/superwall/skills)** (public repo,
+  source of truth, installed via `npx skills add superwall/skills` /
+  `superwall skills`) — the main `superwall` skill (CLI usage + workflow
+  router, REST, analytics, docs), `superwall-editor`, `wwdc`.
+- **This repo's `skills/`** — the CLI's internal workflow skills, too
+  task-specific for the main repo (SKILL.md + `references/`):
+  - **`superwall-integrate`** — SDK integration, per-framework references
+    (`ios.md`, `expo.md`, `react-native.md`, `flutter.md`).
+  - **`superwall-migrate`** — SDK migration off RevenueCat/Adapty/Qonversion,
+    per-provider references.
+  - **`superwall-placements`** — placement strategy, implementation + audit.
+  - **`superwall-dashboard`** — campaigns/products/entitlements setup via the CLI.
+
+The CLI consumes the internal skills three ways: its headless runner inlines
+SKILL.md + exactly the right reference into the agent prompt (an Expo agent
+never sees Swift docs); `<command> --skill` prints the same composition for
+external agents; and `superwall skills` installs them (plus the public toolkit)
+into the user's agent for keeps.
 
 ## How it works
 
@@ -99,24 +118,32 @@ renders identical live progress regardless of which agent ran.
 
 ```
 bin.ts                   executable entry (Node ≥20 guard → src/cli)
+prompts/                 harness protocol — XML templates with {{var}} slots
+  commandments.xml       guardrail system prompt appended to every run
+  context.xml            project-context header
+  actions/               thin per-task wrappers around the bundled skills
+skills/                  internal workflow skills: SKILL.md + references/ per skill
+  superwall-integrate/   references/{ios,expo,react-native,flutter}.md
+  superwall-migrate/     references/{revenuecat,adapty,qonversion}.md
+  superwall-placements/  references/{strategy,ios,expo,react-native,flutter}.md
+  superwall-dashboard/   campaigns/products/entitlements setup via the CLI
 src/
   cli.ts                 yargs command surface
   command.ts             defineCommand: shared lifecycle + renderer selection
-  constants.ts           branding + Integration enum
+  constants.ts           hosts, OAuth client, key scopes, Integration enum
   commands/              one file per command (integrate, asc, auth, doctor, …)
   core/
+    agent/               drive a coding agent: actions registry, prompt assembly,
+                         run, fallback, skill install, drivers (claude / codex)
     api/                 typed Superwall + App Store Connect (proxy) clients
-    actions/             bundled agent actions (integrate, placements, migrate)
-    agent/               commandments, prompt assembly, run, fallback
     auth/                device-flow OAuth + session storage
-    detection/           monorepo-aware app + framework detection
-    drivers/             agent abstraction: claude, codex, spawn
-    frameworks/          per-platform detect() + prompt snippets
-    pipeline/            dashboard stages (products, paywall, verify)
-    skills/              bundled-skill install + loading
+    account/             org / app / key resolution
+    project/             what is this local app: scan, existing SDK, billing, frameworks
+    dashboard/           cloud-state flows: setup stages, superwall.json sync, storekit
+    state/               ~/.superwall persistence (config, reports)
   ui/                    Ink (interactive) + plain (agent) renderers behind one facade
-  util/                  clipboard, env, params, api-output
-skills/                  bundled agent skills (integrate / migrate / placements)
+  util/                  clipboard, env, params, fs, assets, api-output
+tests/                   mirrors src/ (tests/core/api/client.test.ts, …)
 ```
 
 ## Develop

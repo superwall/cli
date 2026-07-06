@@ -1,8 +1,8 @@
 import { ui } from "@/ui";
 import { defineCommand } from "@/command";
-import { detectDrivers } from "@/core/drivers";
-import { scanProject } from "@/core/detection/scan";
-import { detectExisting } from "@/core/detection/existing";
+import { detectDrivers } from "@/core/agent/drivers";
+import { scanProject } from "@/core/project/scan";
+import { detectExisting } from "@/core/project/existing";
 import { apiKeyFromEnv } from "@/util/env";
 
 export const runDoctor = defineCommand(async (ctx) => {

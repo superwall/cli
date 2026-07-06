@@ -20,6 +20,13 @@ const dryRunOption = {
   "dry-run": { type: "boolean" as const, describe: "Plan without changing anything", hidden: true },
 };
 
+const skillOption = {
+  skill: {
+    type: "boolean" as const,
+    describe: "Print the agent playbook (skill + this project's reference) instead of running",
+  },
+};
+
 const RESOURCES = ["orgs", "projects", "apps", "products", "campaigns", "paywalls", "entitlements"] as const;
 
 export function run(): void {
@@ -42,8 +49,9 @@ export function run(): void {
     .command(
       ["integrate", "wizard"],
       "Set up Superwall in your app (SDK → placements → dashboard)",
-      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption }),
+      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption, ...skillOption }),
       (argv) => {
+        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("integrate")(argv));
         void import("@/commands/integrate").then((m) => m.runIntegrate(argv));
       },
     )
@@ -53,25 +61,29 @@ export function run(): void {
       (y) =>
         y
           .positional("action", { choices: ["review", "implement"] as const, describe: "review | implement" })
-          .options({ ...installDirOption, ...dryRunOption }),
+          .options({ ...installDirOption, ...dryRunOption, ...skillOption }),
       (argv) => {
         const id = argv.action === "implement" ? "placements-implement" : "placements-review";
+        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill(id)(argv));
         void import("@/commands/integrate").then((m) => m.runActionCommand(id)(argv));
       },
     )
     .command(
       "dashboard",
       "Set up the Superwall dashboard (campaign + placement) for your app",
-      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption }),
+      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption, ...skillOption }),
       (argv) => {
+        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("dashboard-setup")(argv));
         void import("@/commands/integrate").then((m) => m.runActionCommand("dashboard-setup")(argv));
       },
     )
     .command(
       "migrate",
       "Migrate from RevenueCat / Adapty / Qonversion to Superwall",
-      (y) => y.options({ ...installDirOption, "dry-run": { type: "boolean", describe: "Plan without changes" } }),
+      (y) =>
+        y.options({ ...installDirOption, "dry-run": { type: "boolean", describe: "Plan without changes" }, ...skillOption }),
       (argv) => {
+        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("migrate")(argv));
         void import("@/commands/migrate").then((m) => m.runMigrate(argv));
       },
     )

@@ -1,45 +1,93 @@
 ---
 name: superwall-migrate
-description: Migrate an app from RevenueCat / Adapty / Qonversion to Superwall — map products, entitlements and paywall triggers, then move them over. Use when replacing another paywall/billing SDK with Superwall.
+description: Migrate an app's SDK integration from RevenueCat / Adapty / Qonversion to Superwall — swap the provider's SDK calls for Superwall's (configure, identify, placements, entitlement gating) and set up the Superwall-side products, entitlements and campaigns. Paywalls are rebuilt in the editor; subscriber state stays store-side. Use when replacing another paywall/billing SDK with Superwall.
 ---
 
 # Migrate to Superwall
 
-Move an app off its current paywall/billing provider (RevenueCat, Adapty,
-Qonversion) onto Superwall, either fully or paywalls-only.
+## What this skill does — and does NOT do
 
-## Use the CLI for every Superwall-side change
+This skill migrates the **SDK integration**. It:
 
-The authenticated `superwall` CLI performs all dashboard-side creates (it uses
-the logged-in session — no key juggling):
+- Replaces the provider's SDK calls with Superwall's — `configure`, `identify`,
+  entitlement gating, and (most importantly) turning every "fetch offering + present paywall"
+  call site into a Superwall **placement**.
+- Sets up the Superwall-side resources with the CLI — **products**, **entitlements**, and
+  **campaigns/placements** are *re-created* in Superwall (reusing the same store product ids).
 
-- `superwall entitlements create <identifier>`
-- `superwall products create <identifier> [--name <name>]`
-- `superwall campaigns create <description>` then
-  `superwall campaigns placement <campaignId> <placement>`
-- `superwall products list --json` / `superwall entitlements list --json` to verify
+> **Important — what does NOT migrate:**
+> - **Paywall designs.** Provider paywalls (RC Paywalls, Adapty Paywall Builder, Qonversion UI)
+>   **cannot** be imported. They are **rebuilt from scratch** in the Superwall editor (dashboard). Manual, hand-back to the user.
+> - **Historical analytics / attribution.** Past revenue, cohorts and attribution stay in the old
+>   provider. Superwall starts collecting from the day you integrate.
+> - **The subscriber base (server-side).**
+>   - **Adapty / Qonversion:** there is **no** server-side subscriber migration. Existing subscribers
+>     keep working because their purchases live with the store (StoreKit / Play Billing) — the app
+>     reads them device-side via **Restore Purchases** and maps them to Superwall entitlements. No
+>     subscriber data moves between backends.
+>   - **RevenueCat:** device-side restore works the same way today. In addition, Superwall has a
+>     **subscription-migration feature coming soon** that will migrate subscriptions from RevenueCat
+>     into Superwall via the dashboard ([superwall.com/dashboard](https://superwall.com/dashboard)).
+>     Not shipped yet — do not rely on it for this migration.
 
-## Steps
+## Docs access — always fetch live
 
-1. **Inventory** the current provider's setup: products/SKUs,
-   offerings/entitlements, and every place the app presents a paywall or checks
-   entitlement (find the provider's SDK calls).
-2. **Map** it: products → Superwall products; offerings/entitlements → Superwall
-   entitlements; each paywall trigger → a Superwall placement (`snake_case`).
-3. **Create** the Superwall-side resources with the CLI commands above.
-4. **Wire the app:**
-   - *Full migration* → install + configure the Superwall SDK, register a
-     placement at each former paywall trigger, gate features on Superwall
-     entitlements / `subscriptionStatus`, and remove the old SDK once verified.
-   - *Paywalls only* → keep the old provider for billing: install Superwall,
-     implement a `PurchaseController` that bridges purchases to the provider, and
-     set `Superwall.subscriptionStatus` from the provider's state.
-5. Keep edits minimal and idiomatic — don't refactor unrelated code.
+Doc content changes; fetch it rather than trusting baked text.
 
-## Leftovers to hand back to the user
+```bash
+curl -sL https://superwall.com/docs/llms.txt          # index — find the right page path
+curl -sL https://superwall.com/docs/{path}.md         # any doc page as markdown (verified working)
+```
 
-Manual steps the CLI can't finish: design the paywalls in the dashboard, attach
-products to them, and connect App Store Connect
-(`superwall secrets set app-store-connect`) so products can auto-import.
+## Detect the provider, then open its playbook
+
+Grep the codebase for the SDK, then read the matching reference in full before touching anything:
+
+| Provider | Detect (package / import) | Playbook |
+|---|---|---|
+| RevenueCat | `RevenueCat`, `react-native-purchases`, `purchases_flutter`, `Purchases.configure` | `references/revenuecat.md` |
+| Adapty | `Adapty`, `react-native-adapty`, `adapty_flutter`, `Adapty.activate` | `references/adapty.md` |
+| Qonversion | `Qonversion`, `react-native-qonversion`, `qonversion_flutter`, `Qonversion.initWithConfig` | `references/qonversion.md` |
+
+If more than one is present, migrate the one that owns purchases; treat the other as already-observer.
+
+## Flow (every provider)
+
+1. **Inventory** — grep the provider's SDK symbols: configure/activate, purchase, restore,
+   entitlement/access-level checks, and every paywall presentation call site. The playbook lists exact symbols per framework.
+2. **Map** — products → Superwall products; entitlements/access-levels/permissions → Superwall
+   entitlements; each paywall/presentation call site → a Superwall placement (`snake_case`).
+3. **Re-create** the Superwall-side resources with the CLI (below). Reuse the SAME App Store / Play
+   product identifiers — the store products never change, only the management layer does.
+4. **Wire the app** — install + configure Superwall, then follow the chosen mode.
+5. **Verify** — build, present each placement, confirm existing subscribers are recognized
+   (Restore Purchases), then remove the old SDK only in FULL mode.
+
+## Two modes — decide first (this is about who owns billing, not what migrates)
+
+- **FULL** — Superwall owns billing. Remove the provider SDK; Superwall's built-in purchasing
+  and device-level entitlements take over. Simplest; use unless billing must stay put.
+- **PAYWALLS-ONLY** — provider stays the source of truth for purchases. Keep its SDK, install
+  Superwall with a `PurchaseController` that forwards buys to the provider and mirror its
+  entitlements into `Superwall.subscriptionStatus`. Use when the provider's receipt validation,
+  webhooks, or cross-platform entitlements must remain authoritative. (Observer mode is the
+  analytics-only variant: provider owns purchases AND paywalls, Superwall just records revenue.)
+
+## CLI — every Superwall-side resource
+
+The authenticated `superwall` CLI performs all dashboard creates (logged-in session, no key juggling):
+
+- `superwall entitlements create <id>` · `superwall entitlements list --json`
+- `superwall products create <id> [--name <name>]` · `superwall products list --json`
+- `superwall campaigns create <description>` → `superwall campaigns placement <campaignId> <placement>` · `superwall campaigns list --json`
+
+ASC products can be imported via the products flow / an ASC connection (`superwall secrets set
+app-store-connect`) instead of manual creation.
+
+## Hand back to the user (dashboard-only, manual)
+
+- **Rebuild each paywall** in the editor (designs do not import) and attach products.
+- Connect ASC/Play so products auto-import.
+- Never delete the old provider's dashboard/webhook config until verified in production.
 
 Docs: superwall.com/docs

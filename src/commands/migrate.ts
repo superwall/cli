@@ -3,15 +3,15 @@ import { ui } from "@/ui";
 import { defineCommand } from "@/command";
 import { stripReport } from "@/ui/log";
 import { isNonInteractive } from "@/util/env";
-import { detectDrivers } from "@/core/drivers";
-import { scanProject } from "@/core/detection/scan";
-import { detectBilling } from "@/core/detection/billing";
-import { detectExisting } from "@/core/detection/existing";
+import { detectDrivers } from "@/core/agent/drivers";
+import { scanProject } from "@/core/project/scan";
+import { detectBilling } from "@/core/project/billing";
+import { detectExisting } from "@/core/project/existing";
 import { loadSession } from "@/core/auth/storage";
 import { performLogin } from "@/core/auth/login";
 import { runAction } from "@/core/agent/run";
-import { saveReport } from "@/core/reports";
-import { actionById, type ActionContext } from "@/core/actions";
+import { saveReport } from "@/core/state/reports";
+import { actionById, type ActionContext } from "@/core/agent/actions";
 
 export const runMigrate = defineCommand(async (ctx) => {
   const { installDir, dryRun } = ctx;
@@ -84,7 +84,7 @@ export const runMigrate = defineCommand(async (ctx) => {
   }
   if (session) {
     ui.success(`Logged in as \`${session.userEmail ?? "you"}\`${session.orgName ? ` · \`${session.orgName}\`` : ""}`);
-    process.env.SUPERWALL_API_KEY = session.apiKey;
+    if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
   }
 
   const existing = detectExisting(app);

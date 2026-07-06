@@ -1,9 +1,9 @@
 import { ui } from "@/ui";
 import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";
-import { SUPPORTED_LABEL } from "@/core/detection/framework";
-import { scanProject } from "@/core/detection/scan";
-import { detectExisting } from "@/core/detection/existing";
+import { SUPPORTED_LABEL } from "@/core/project/frameworks";
+import { scanProject } from "@/core/project/scan";
+import { detectExisting } from "@/core/project/existing";
 
 export const runScan = defineCommand(async (ctx) => {
   const { installDir, json } = ctx;

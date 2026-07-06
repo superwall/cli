@@ -1,7 +1,6 @@
-import type { AgentDriver, AgentEvent, AgentResult } from "@/core/drivers";
-import type { ActionContext, WizardAction } from "@/core/actions";
-import { getCommandments } from "./commandments";
-import { buildActionPrompt } from "./prompt";
+import type { AgentDriver, AgentEvent, AgentResult } from "./drivers";
+import type { ActionContext, WizardAction } from "./actions";
+import { buildActionPrompt, getCommandments } from "./prompt";
 
 export interface RunActionOptions {
   driver: AgentDriver;
@@ -12,9 +11,8 @@ export interface RunActionOptions {
 }
 
 export async function runAction(opts: RunActionOptions): Promise<AgentResult> {
-  const prompt = buildActionPrompt(opts.action, opts.ctx);
   return opts.driver.run({
-    prompt,
+    prompt: buildActionPrompt(opts.action, opts.ctx),
     cwd: opts.ctx.app.path,
     systemAppend: getCommandments(),
     allowedTools: opts.action.allowedTools,
