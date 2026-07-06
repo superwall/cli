@@ -3,13 +3,19 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export interface Session {
-  apiKey: string;
+  authMethod?: "oauth" | "api_key";
+  apiKey?: string;
   orgId?: string;
   orgName?: string;
   orgCount?: number;
   userEmail?: string;
   host: string;
   createdAt: string;
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: number;
+  tokenEndpoint?: string;
+  oauthClientId?: string;
 }
 
 function dir(): string {

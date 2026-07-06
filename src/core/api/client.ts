@@ -1,5 +1,6 @@
 import { API_HOST } from "@/constants";
 import { loadSession, type Session } from "@/core/auth/storage";
+import { resolveAuthToken } from "@/core/auth/token";
 
 export class ApiError extends Error {
   constructor(
@@ -18,7 +19,7 @@ export class NotLoggedInError extends Error {
 }
 
 export class SuperwallApi {
-  private constructor(private readonly session: Session) {}
+  private constructor(private session: Session) {}
 
   static of(session: Session): SuperwallApi {
     return new SuperwallApi(session);
@@ -42,10 +43,12 @@ export class SuperwallApi {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const { token, session } = await resolveAuthToken(this.session);
+    this.session = session;
     const res = await fetch(`${this.base()}${path}`, {
       method,
       headers: {
-        authorization: `Bearer ${this.session.apiKey}`,
+        authorization: `Bearer ${token}`,
         accept: "application/json",
         ...(body ? { "content-type": "application/json" } : {}),
       },

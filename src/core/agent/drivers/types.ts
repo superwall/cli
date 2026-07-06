@@ -26,7 +26,7 @@ export interface DriverInfo {
   version?: string;
 }
 
-export type AgentDriverId = "claude" | "codex";
+export type AgentDriverId = "claude" | "codex" | "superwall";
 
 export interface AgentDriver {
   id: AgentDriverId;

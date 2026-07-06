@@ -92,6 +92,7 @@ export function run(): void {
       "Log in to Superwall (opens your browser)",
       (y) =>
         y.options({
+          "api-key": { type: "string", describe: "Log in headlessly with an API key (for CI) instead of the browser" },
           host: { type: "string", describe: "OAuth issuer override", hidden: true },
           "client-id": { type: "string", describe: "OAuth client id override", hidden: true },
         }),

@@ -1,11 +1,12 @@
 import type { AgentDriver, DriverInfo } from "./types";
 import { claudeDriver } from "./claude";
 import { codexDriver } from "./codex";
+import { superwallDriver } from "./superwall";
 
 export * from "./types";
-export { claudeDriver, codexDriver };
+export { claudeDriver, codexDriver, superwallDriver };
 
-export const ALL_DRIVERS: AgentDriver[] = [claudeDriver, codexDriver];
+export const ALL_DRIVERS: AgentDriver[] = [claudeDriver, codexDriver, superwallDriver];
 
 export interface DetectedDriver {
   driver: AgentDriver;

@@ -13,7 +13,7 @@ import { detectBilling } from "@/core/project/billing";
 import { resolveAccount } from "@/core/account";
 import { resolveAppBinding, resolveScopeFromKey, platformForIntegration } from "@/core/account/bind";
 import { performLogin } from "@/core/auth/login";
-import { loadSession } from "@/core/auth/storage";
+import { loadSession, type Session } from "@/core/auth/storage";
 import { SuperwallApi } from "@/core/api/client";
 import { discoverPublicApiKey } from "@/core/api/discover";
 import { listResource, platformLabel, rowName, titleCase, type Row, type Scope } from "@/core/api/resources";
@@ -24,6 +24,7 @@ import { buildCopyPrompt } from "@/core/agent/prompt";
 import { copyToClipboard } from "@/util/clipboard";
 import { runFallback } from "@/core/agent/fallback";
 import { ACTIONS, actionById, type ActionContext, type ActionId, type WizardAction } from "@/core/agent/actions";
+import { getHostedStatus } from "@/core/agent/hosted";
 
 export const runIntegrate = defineCommand(runPipeline);
 
@@ -37,7 +38,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
 
   const drivers = await withSpinner("Checking your setup", () => detectDrivers());
   if (drivers.length === 0) {
-    ui.warn("No coding agent found (looked for Claude Code and Codex).");
+    ui.warn("No coding agent found.");
     await runFallback(installDir);
     return;
   }
@@ -65,7 +66,8 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     ui.info(`RevenueCat: \`${intent}\``);
   }
 
-  // Login is lazy: only the dashboard stages need the org session — never gate the SDK step on it.
+  // Login is lazy: local agents can run without it, while the bundled
+  // Superwall Agent needs OAuth because its hosted grant is user-scoped.
   let session = loadSession();
   if (session?.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
 
@@ -78,31 +80,11 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   const ensureLogin = async (): Promise<boolean> => {
     if (session) return true;
     if (isNonInteractive() || dryRun) return false;
-    const spin = ui.spinner();
-    try {
-      session = await performLogin({
-        onVerify: ({ url, userCode }) => {
-          ui.note(`If your browser didn't open, visit:\n\n${url}\n\nand enter the code  \`${userCode}\``, "Approve in your browser");
-          spin.start("Signing you in");
-        },
-        onStatus: (m) => spin.message(m),
-        onSelectOrg: async (orgs) => {
-          const sel = await ui.select({
-            message: "Which organization?",
-            options: orgs.map((o) => ({ value: String(o.id), label: o.name, hint: titleCase(o.role) })),
-          });
-          spin.start("Setting things up");
-          return sel === null ? null : (orgs.find((o) => String(o.id) === sel) ?? null);
-        },
-      });
-      spin.stop(`Signed in as ${session.userEmail ?? "you"}`);
-      if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
-      return true;
-    } catch (e) {
-      spin.stop("Sign-in failed");
-      ui.warn((e as Error).message);
-      return false;
-    }
+    const signedIn = await performLoginWithUi();
+    if (!signedIn) return false;
+    session = signedIn;
+    if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
+    return true;
   };
 
   let apiKey = existing.apiKey ?? "";
@@ -139,6 +121,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     apiKey = account.apiKey;
   }
   const ctxAction: ActionContext = { app, apiKey, existing };
+  const ensureAgentReady = () => ensureAgentDriverReady(driver, ensureLogin, dryRun);
 
   ui.step("Step 1 · Integrate the SDK");
   if (existing.fullyIntegrated) {
@@ -158,6 +141,13 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     if (how === "copy") {
       await copyIntegrationPrompt(ctxAction);
       return void ui.outro("Paste it into your agent, then run `superwall integrate` to continue.");
+    }
+    if (!(await ensureAgentReady())) {
+      if (!isNonInteractive()) {
+        await copyIntegrationPrompt(ctxAction);
+        ui.outro("Paste it into your agent, or run `superwall login` and try again.");
+      }
+      return;
     }
     await runActionWithUI(driver, actionById["integrate"], ctxAction);
     const spin = ui.spinner();
@@ -180,7 +170,9 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   if (scope) {
     const stageCtx: StageCtx = { api: SuperwallApi.fromSession(), scope, appName: app.name, bundleId, projectDir: app.path };
     await stage("Step 2 · Products", () => runProductsStage(stageCtx));
-    await stage("Step 3 · Campaigns & Placements", () => runCampaignsAndPlacements(driver, ctxAction, stageCtx));
+    await stage("Step 3 · Campaigns & Placements", () =>
+      runCampaignsAndPlacements(driver, ctxAction, stageCtx, ensureAgentReady),
+    );
     await stage("Step 4 · Paywall", () => runPaywallStage());
     await stage("Step 5 · Verify", () => runVerifyStage(stageCtx));
   } else if (!dryRun && !isNonInteractive()) {
@@ -197,11 +189,21 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
 
   const drivers = await withSpinner("Checking your setup", () => detectDrivers());
   if (drivers.length === 0) {
-    ui.warn("No coding agent found (looked for Claude Code and Codex).");
+    ui.warn("No coding agent found.");
     await runFallback(installDir);
     return;
   }
   const driver = drivers[0]!;
+  let session = loadSession();
+  const ensureLogin = async (): Promise<boolean> => {
+    if (session) return true;
+    if (isNonInteractive() || dryRun) return false;
+    const signedIn = await performLoginWithUi();
+    if (!signedIn) return false;
+    session = signedIn;
+    if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
+    return true;
+  };
 
   const app = await pickApp(installDir);
   if (!app) return void ui.warn("Cancelled.");
@@ -240,6 +242,7 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   if (action.id === "integrate" && existing.fullyIntegrated) {
     ui.note("SDK + configure() already present — no code changes made.", "Already integrated");
   } else {
+    if (!(await ensureAgentDriverReady(driver.driver, ensureLogin, dryRun))) return;
     await runActionWithUI(driver.driver, action, actionCtx);
   }
 
@@ -250,6 +253,58 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     spin.stop(ok ? "Superwall skills installed" : "Skill install skipped");
   }
   finish(action);
+}
+
+async function performLoginWithUi(): Promise<Session | null> {
+  const spin = ui.spinner();
+  try {
+    const session = await performLogin({
+      onVerify: ({ url, userCode }) => {
+        ui.note(`If your browser didn't open, visit:\n\n${url}\n\nand enter the code  \`${userCode}\``, "Approve in your browser");
+        spin.start("Signing you in");
+      },
+      onStatus: (m) => spin.message(m),
+      onSelectOrg: async (orgs) => {
+        const sel = await ui.select({
+          message: "Which organization?",
+          options: orgs.map((o) => ({ value: String(o.id), label: o.name, hint: titleCase(o.role) })),
+        });
+        spin.start("Setting things up");
+        return sel === null ? null : (orgs.find((o) => String(o.id) === sel) ?? null);
+      },
+    });
+    spin.stop(`Signed in as ${session.userEmail ?? "you"}`);
+    return session;
+  } catch (e) {
+    spin.stop("Sign-in failed");
+    ui.warn((e as Error).message);
+    return null;
+  }
+}
+
+async function ensureAgentDriverReady(
+  driver: AgentDriver,
+  ensureLogin: () => Promise<boolean>,
+  dryRun: boolean,
+): Promise<boolean> {
+  if (driver.id !== "superwall" || dryRun) return true;
+
+  if (!(await ensureLogin())) {
+    ui.warn("Superwall Agent needs sign-in. Run `superwall login`, or install Claude Code/Codex and re-run.");
+    return false;
+  }
+
+  const status = await withSpinner("Checking Superwall Agent credit", () => getHostedStatus());
+  if (!status) {
+    ui.warn("Superwall Agent needs an OAuth login. Run `superwall login` (not `--api-key`), or install Claude Code/Codex.");
+    return false;
+  }
+  if (status.exhausted) {
+    ui.warn("Your hosted Superwall Agent credit is exhausted. Install Claude Code/Codex or copy the prompt into your own agent.");
+    return false;
+  }
+
+  return true;
 }
 
 async function pickApp(installDir: string): Promise<DetectedApp | null> {
@@ -355,6 +410,7 @@ async function runCampaignsAndPlacements(
   driver: AgentDriver,
   ctxAction: ActionContext,
   stageCtx: StageCtx,
+  ensureAgentReady: () => Promise<boolean>,
 ): Promise<void> {
   const { api, scope } = stageCtx;
 
@@ -380,10 +436,12 @@ async function runCampaignsAndPlacements(
   if (!review) return;
 
   const context: ActionContext = { ...ctxAction, campaigns: campaignSummary(campaigns) };
+  if (!(await ensureAgentReady())) return;
   await runActionWithUI(driver, actionById["placements-review"], context);
 
   const apply = await ui.confirm({ message: "Apply the suggested changes?" });
   if (apply) {
+    if (!(await ensureAgentReady())) return;
     await runActionWithUI(driver, actionById["placements-implement"], {
       ...context,
       priorReport: loadReport(ctxAction.app.path, "placements-review"),

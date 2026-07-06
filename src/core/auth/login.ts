@@ -1,4 +1,4 @@
-import { API_HOST, AUTH_HOST, CLI_CLIENT_ID, CLI_KEY_SCOPES, OAUTH_SCOPE } from "@/constants";
+import { API_HOST, AUTH_HOST, CLI_CLIENT_ID, OAUTH_SCOPE } from "@/constants";
 import { openBrowser } from "./browser";
 import { saveSession, type Session } from "./storage";
 
@@ -51,7 +51,7 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
   opts.onVerify?.({ url, userCode: dev.user_code });
   openBrowser(url);
 
-  const { accessToken, refreshToken } = await pollForToken(disc.token_endpoint, clientId, dev, opts.onStatus);
+  const { accessToken, refreshToken, expiresIn } = await pollForToken(disc.token_endpoint, clientId, dev, opts.onStatus);
   let apiToken = accessToken;
 
   const me = (await getJson(`${apiHost}/v2/me`, apiToken).catch(() => null)) as { email?: string } | null;
@@ -98,15 +98,44 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
     if (fresh) apiToken = fresh;
   }
 
-  opts.onStatus?.("Creating your Superwall CLI key…");
-  const token = await createCliKey(apiHost, org.id, apiToken);
-
   const session: Session = {
-    apiKey: token,
+    authMethod: "oauth",
     orgId: String(org.id),
     orgName: org.name,
     orgCount: createdNewOrg ? 1 : uniqueOrgs.length,
     userEmail: me?.email,
+    host: apiHost,
+    createdAt: new Date().toISOString(),
+    accessToken: apiToken,
+    refreshToken,
+    accessTokenExpiresAt: expiresIn ? Date.now() + expiresIn * 1000 : undefined,
+    tokenEndpoint: disc.token_endpoint,
+    oauthClientId: clientId,
+  };
+  saveSession(session);
+  return session;
+}
+
+export async function loginWithApiKey(apiKey: string, apiHost = API_HOST): Promise<Session> {
+  const key = apiKey.trim();
+  if (!key) throw new Error("An API key is required.");
+
+  let org: { id?: string; name?: string } = {};
+  try {
+    const res = (await getJson(`${apiHost}/v2/me/organizations`, key)) as {
+      data?: Array<{ id: number | string; name: string }>;
+    };
+    const first = res.data?.[0];
+    if (first) org = { id: String(first.id), name: first.name };
+  } catch {
+    throw new Error("That API key was rejected. Check it and try again.");
+  }
+
+  const session: Session = {
+    authMethod: "api_key",
+    apiKey: key,
+    orgId: org.id,
+    orgName: org.name,
     host: apiHost,
     createdAt: new Date().toISOString(),
   };
@@ -140,7 +169,7 @@ async function pollForToken(
   clientId: string,
   dev: DeviceAuth,
   onStatus?: (m: string) => void,
-): Promise<{ accessToken: string; refreshToken?: string }> {
+): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number }> {
   const deadline = Date.now() + (dev.expires_in ?? 600) * 1000;
   let interval = dev.interval ?? 5;
   while (Date.now() < deadline) {
@@ -153,10 +182,12 @@ async function pollForToken(
     const d = (await r.json().catch(() => ({}))) as {
       access_token?: string;
       refresh_token?: string;
+      expires_in?: number;
       error?: string;
       error_description?: string;
     };
-    if (r.ok && d.access_token) return { accessToken: d.access_token, refreshToken: d.refresh_token };
+    if (r.ok && d.access_token)
+      return { accessToken: d.access_token, refreshToken: d.refresh_token, expiresIn: d.expires_in };
     switch (d.error) {
       case "authorization_pending":
         onStatus?.("Waiting for you to approve in the browser…");
@@ -173,35 +204,6 @@ async function pollForToken(
     }
   }
   throw new Error("Login timed out.");
-}
-
-async function createCliKey(apiHost: string, orgId: number | string, accessToken: string): Promise<string> {
-  // A just-created org can lag the auth-context cache; retry the membership error a few times.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const r = await fetch(`${apiHost}/v2/organizations/${orgId}/access/api-keys`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({
-        name: "Superwall CLI",
-        scopes: CLI_KEY_SCOPES,
-        project_access_mode: "ALL_PROJECTS",
-        project_ids: [],
-      }),
-    });
-    if (r.ok) {
-      const key = (await r.json()) as { token?: string };
-      if (!key.token) throw new Error("Key creation did not return a token.");
-      return key.token;
-    }
-    const detail = await r.text().catch(() => "");
-    const membershipLag = r.status === 400 && /not a member|parameter_invalid/i.test(detail);
-    if (membershipLag && attempt < 4) {
-      await sleep(2500);
-      continue;
-    }
-    throw new Error(`Creating the CLI key failed (HTTP ${r.status}). ${detail}`.trim());
-  }
-  throw new Error("Creating the CLI key failed after retries.");
 }
 
 async function refreshAccessToken(
