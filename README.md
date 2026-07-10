@@ -148,6 +148,10 @@ tests/                   mirrors src/ (tests/core/api/client.test.ts, …)
 
 ## Develop
 
+**Read [AGENTS.md](AGENTS.md) first** — command naming, UI rules, skill
+authoring, and the sync checklist are decided conventions, not suggestions.
+Skill authoring specifically: `.claude/skills/authoring-skills/SKILL.md`.
+
 ```bash
 bun install
 bun dev           # run from source (bun bin.ts)
