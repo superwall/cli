@@ -89,7 +89,7 @@ async function fetchSkillSummary(name: string): Promise<string> {
     const raw = (await res.text()).match(/^description:\s*(.+)$/m)?.[1] ?? "";
     const description = raw.trim().replace(/^["']|["'`]+$/g, "");
     const firstSentence = description.split(/(?<=\.)\s/)[0] ?? description;
-    return firstSentence.length > 110 ? `${firstSentence.slice(0, 107)}…` : firstSentence;
+    return firstSentence.length > 64 ? `${firstSentence.slice(0, 61)}…` : firstSentence;
   } catch {
     return "";
   }

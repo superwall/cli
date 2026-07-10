@@ -322,7 +322,10 @@ function MultiSelectView({ active }: { active: Extract<Active, { type: "multisel
         return (
           <Box key={i}>
             <Text dimColor>│ </Text>
-            <Text color={cur ? PRIMARY : undefined}> {on ? "◼" : "◻"} {o.label}</Text>
+            <Text color={PRIMARY}>{cur ? "❯ " : "  "}</Text>
+            <Text color={on ? PRIMARY : undefined} bold={cur}>
+              {on ? "◼" : "◻"} {o.label}
+            </Text>
             {o.hint ? <Text dimColor>  {o.hint}</Text> : null}
           </Box>
         );
