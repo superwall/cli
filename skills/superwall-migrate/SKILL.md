@@ -81,8 +81,7 @@ The authenticated `superwall` CLI performs all dashboard creates (logged-in sess
 - `superwall products create <id> [--name <name>]` · `superwall products list --json`
 - `superwall campaigns create <description>` → `superwall campaigns placement <campaignId> <placement>` · `superwall campaigns list --json`
 
-ASC products can be imported via the products flow / an ASC connection (`superwall secrets set
-app-store-connect`) instead of manual creation.
+ASC products can be imported via the products flow / an ASC connection (`superwall asc keys set …`) instead of manual creation.
 
 ## Hand back to the user (dashboard-only, manual)
 

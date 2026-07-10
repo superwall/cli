@@ -1,5 +1,6 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import pc from "picocolors";
 import { ENV_API_KEY, VERSION } from "@/constants";
 
 const installDirOption = {
@@ -27,25 +28,76 @@ const skillOption = {
   },
 };
 
-const RESOURCES = ["orgs", "projects", "apps", "products", "campaigns", "paywalls", "entitlements"] as const;
+const RESOURCES = ["orgs", "apps", "products", "campaigns", "paywalls", "entitlements"] as const;
+
+const API_VERBS = ["get", "post", "patch", "delete"] as const;
+
+function printHelp(): void {
+  const pad = (cmd: string) => `  ${cmd.padEnd(30)}`;
+  const row = (cmd: string, desc: string) => `${pad(cmd)}${desc}`;
+  const head = (title: string) => pc.bold(`${title}:`);
+  process.stdout.write(
+    [
+      `${pc.bold("Superwall CLI")} ${pc.dim(`v${VERSION}`)} — control Superwall from your terminal.`,
+      "",
+      pc.bold("Usage:"),
+      "  superwall [command]",
+      "",
+      head("Workflow commands"),
+      row("integrate", "Set up Superwall in your app (agent-driven)"),
+      row("migrate", "Migrate from RevenueCat / Adapty / Qonversion"),
+      row("review [--fix]", "Review placements & campaign coverage; --fix implements"),
+      pc.dim("                                  Each takes --skill to print the playbook instead of running."),
+      "",
+      head("Resource commands"),
+      row("bootstrap", "Complete account tree: projects, apps, campaigns, products, …"),
+      row("apps", "Projects & their platform apps (list · create · use)"),
+      row("products", "Products (list · create · storekit)"),
+      row("entitlements", "Entitlements (list · create)"),
+      row("campaigns", "Campaigns (list · create · placement)"),
+      row("paywalls", "Paywalls (list)"),
+      row("orgs", "Organizations (list)"),
+      "",
+      head("API commands"),
+      row("get · post · patch · delete", "Raw requests to the Superwall API (/v2/…)"),
+      "",
+      head("App Store Connect commands"),
+      row("asc", "The ASC API via Superwall's signed proxy (no .p8 / JWT)"),
+      row("asc keys", "Manage App Store Connect API keys (list · set · rm)"),
+      "",
+      head("Other commands"),
+      row("login · logout · whoami", "Authenticate the CLI"),
+      row("skills", "Install the Superwall agent toolkit"),
+      row("doctor", "Check the health of your integration"),
+      "",
+      pc.bold("Flags:"),
+      row("--json", "Machine-readable output"),
+      row("--no-ui", "Plain output (for agents / CI)"),
+      row("-v, --version", "Print the CLI version"),
+      row("-h, --help", "Help for superwall"),
+      "",
+      `Use ${pc.bold('"superwall [command] --help"')} for more information about a command.`,
+      "",
+    ].join("\n"),
+  );
+}
 
 export function run(): void {
-  let cli = yargs(hideBin(process.argv))
+  const args = hideBin(process.argv);
+  if (args.length === 0 || args[0] === "help" || ((args[0] === "-h" || args[0] === "--help") && args.length === 1)) {
+    printHelp();
+    return;
+  }
+
+  let cli = yargs(args)
     .scriptName("superwall")
     .usage("Superwall CLI\n\n$0 [command]")
     .option("ui", {
       type: "boolean",
       default: true,
+      hidden: true,
       describe: "Rich interactive UI (use --no-ui for plain, agent-friendly output)",
     })
-    .command(
-      "$0",
-      "Show this help",
-      (y) => y,
-      () => {
-        cli.showHelp();
-      },
-    )
     .command(
       ["integrate", "wizard"],
       "Set up Superwall in your app (SDK → placements → dashboard)",
@@ -56,25 +108,19 @@ export function run(): void {
       },
     )
     .command(
-      "placements <action>",
-      "Review or implement Superwall placements",
+      "review",
+      "Review your Superwall setup — placements, gates, campaign coverage",
       (y) =>
-        y
-          .positional("action", { choices: ["review", "implement"] as const, describe: "review | implement" })
-          .options({ ...installDirOption, ...dryRunOption, ...skillOption }),
+        y.options({
+          ...installDirOption,
+          ...dryRunOption,
+          ...skillOption,
+          fix: { type: "boolean", describe: "Act on the findings: implement the missing placements" },
+        }),
       (argv) => {
-        const id = argv.action === "implement" ? "placements-implement" : "placements-review";
+        const id = argv.fix ? "placements-implement" : "placements-review";
         if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill(id)(argv));
         void import("@/commands/integrate").then((m) => m.runActionCommand(id)(argv));
-      },
-    )
-    .command(
-      "dashboard",
-      "Set up the Superwall dashboard (campaign + placement) for your app",
-      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption, ...skillOption }),
-      (argv) => {
-        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("dashboard-setup")(argv));
-        void import("@/commands/integrate").then((m) => m.runActionCommand("dashboard-setup")(argv));
       },
     )
     .command(
@@ -137,24 +183,23 @@ export function run(): void {
       },
     )
     .command(
-      "scan",
-      "Detect apps + existing Superwall setup in this directory",
-      (y) => y.options({ ...installDirOption, json: { type: "boolean", describe: "Output JSON" } }),
-      (argv) => {
-        void import("@/commands/scan").then((m) => m.runScan(argv));
-      },
-    )
-    .command(
-      ["asc <target> [value]", "app-store-connect <target> [value]"],
+      ["asc <target> [value] [value2]", "app-store-connect <target> [value] [value2]"],
       "Call the App Store Connect API through Superwall's signed proxy (no .p8 / JWT needed)",
       (y) =>
         y
-          .positional("target", { type: "string", describe: "get|post|patch|delete, a raw path (/v1/…), or: apps | products | subscriptions | iaps" })
-          .positional("value", { type: "string", describe: "Path (for a verb) or app bundle id / ASC app id (for shortcuts)" })
+          .positional("target", { type: "string", describe: "get|post|patch|delete, a raw path (/v1/…), or: apps | products | subscriptions | iaps | keys" })
+          .positional("value", { type: "string", describe: "Path (for a verb), app bundle id / ASC app id (shortcuts), or list|set|rm (keys)" })
+          .positional("value2", { type: "string", describe: "Team id (keys rm)" })
           .options({
             d: { type: "array", describe: "Request param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]" },
             team: { type: "string", describe: "ASC team id (if the org has more than one connected)" },
             json: { type: "boolean", describe: "Output JSON" },
+            // asc secrets set
+            "key-id": { type: "string", describe: "ASC key id (keys set)" },
+            issuer: { type: "string", describe: "ASC issuer id (keys set)" },
+            "key-file": { type: "string", describe: "Path to the .p8 key file (keys set)" },
+            name: { type: "string", describe: "Account name (keys set)" },
+            "dry-run": { type: "boolean", hidden: true },
           }),
       (argv) => {
         void import("@/commands/asc").then((m) => m.runAsc(argv));
@@ -163,8 +208,7 @@ export function run(): void {
 
   const RESOURCE_HELP: Partial<Record<(typeof RESOURCES)[number], string>> = {
     orgs: "List your Superwall organizations",
-    projects: "List your projects and their platforms (ios/android/…)",
-    apps: "Add a platform to a project (superwall apps create <name> --platform ios)",
+    apps: "Your apps, grouped by project (list · create <name> --platform ios · use <id>)",
   };
 
   for (const resource of RESOURCES) {
@@ -199,42 +243,48 @@ export function run(): void {
     );
   }
 
-  for (const name of ["init", "pull", "plan", "push"] as const) {
+  cli = cli.command(
+    "bootstrap",
+    "Complete account tree: orgs, projects, apps, campaigns, placements, products, …",
+    (y) => y.options({ json: { type: "boolean", describe: "Output JSON" } }),
+    (argv) => {
+      void import("@/commands/api").then((m) => m.runBootstrap(argv));
+    },
+  );
+
+  for (const verb of API_VERBS) {
     cli = cli.command(
-      name,
-      `Local-first Monetization-as-Code: ${name} superwall.json ↔ cloud`,
-      (y) => y.options({ ...installDirOption, "dry-run": { type: "boolean", describe: "Preview (push)" } }),
+      `${verb} <path>`,
+      `Make ${verb.toUpperCase()} requests to the Superwall API`,
+      (y) =>
+        y
+          .positional("path", { type: "string", describe: "API path, e.g. /v2/products" })
+          .options({
+            d: { type: "array", describe: "Param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]" },
+            json: { type: "boolean", describe: "Output JSON" },
+          }),
       (argv) => {
-        void import("@/commands/local").then((m) => m.runLocal(name)(argv));
+        void import("@/commands/api").then((m) => m.runApi(verb)(argv));
       },
     );
   }
 
-  cli = cli.command(
-    "secrets [action] [value] [value2]",
-    "Manage stored credentials (App Store Connect API key)",
-    (y) =>
-      y
-        .positional("action", { type: "string", default: "list", describe: "set | list | rm" })
-        .positional("value", { type: "string", describe: "app-store-connect" })
-        .positional("value2", { type: "string", describe: "team id (rm)" })
-        .options({
-          "key-id": { type: "string", describe: "ASC key id" },
-          issuer: { type: "string", describe: "ASC issuer id" },
-          "key-file": { type: "string", describe: "Path to the .p8 key file" },
-          name: { type: "string", describe: "Account name" },
-          "dry-run": { type: "boolean" },
-        }),
-    (argv) => {
-      void import("@/commands/secrets").then((m) => m.runSecrets(argv));
-    },
-  );
-
   void cli
+    .command("$0", false, (y) => y, printHelp)
     .version(VERSION)
     .alias("v", "version")
     .help()
     .alias("h", "help")
+    .recommendCommands()
+    .showHelpOnFail(false)
+    .fail((msg, err) => {
+      if (err) throw err;
+      const friendly = msg
+        .replace(/^Unknown arguments?:/, "Unknown command:")
+        .replace(/^Not enough non-option arguments.*$/, "Missing a required argument.");
+      process.stderr.write(`${pc.red("✗")} ${friendly}\n\nRun ${pc.bold("superwall --help")} for usage.\n`);
+      process.exit(1);
+    })
     .strict()
     .parse();
 }

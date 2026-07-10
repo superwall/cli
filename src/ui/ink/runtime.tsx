@@ -31,7 +31,9 @@ export const inkRenderer: Renderer = {
   note: (text: string, title?: string) => addItem("note", text, title),
   report: (text: string) => addItem("report", text),
   list: (o) => addList(o.items, o.empty),
-  outro: (text: string) => addItem("outro", text),
+  outro: (text: string) => {
+    if (text) addItem("outro", text);
+  },
 
   spinner(): Spinner {
     return {

@@ -50,7 +50,6 @@ export interface SkillInfo {
   summary: string;
 }
 
-// For display only; the actual set is resolved live by the `skills` CLI at install time.
 export const KNOWN_SKILLS: SkillInfo[] = [
   {
     name: "superwall",
@@ -59,6 +58,42 @@ export const KNOWN_SKILLS: SkillInfo[] = [
   { name: "superwall-editor", summary: "Build & edit live paywalls, onboarding, and web2app flows from the CLI" },
   { name: "wwdc", summary: "WWDC session lookup, comparison, and citation" },
 ];
+
+export async function fetchToolkitSkills(): Promise<SkillInfo[]> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${SUPERWALL_SKILLS_SOURCE}/contents/skills`, {
+      headers: { accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return KNOWN_SKILLS;
+    const entries = (await res.json()) as Array<{ name: string; type: string }>;
+    const dirs = entries.filter((e) => e.type === "dir").map((e) => e.name);
+    if (dirs.length === 0) return KNOWN_SKILLS;
+    const skills = await Promise.all(
+      dirs.map(async (name): Promise<SkillInfo> => ({ name, summary: await fetchSkillSummary(name) })),
+    );
+    // Main skill first, rest alphabetical.
+    return skills.sort((a, b) => (a.name === "superwall" ? -1 : b.name === "superwall" ? 1 : a.name.localeCompare(b.name)));
+  } catch {
+    return KNOWN_SKILLS;
+  }
+}
+
+async function fetchSkillSummary(name: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://raw.githubusercontent.com/${SUPERWALL_SKILLS_SOURCE}/main/skills/${name}/SKILL.md`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (!res.ok) return "";
+    const raw = (await res.text()).match(/^description:\s*(.+)$/m)?.[1] ?? "";
+    const description = raw.trim().replace(/^["']|["'`]+$/g, "");
+    const firstSentence = description.split(/(?<=\.)\s/)[0] ?? description;
+    return firstSentence.length > 110 ? `${firstSentence.slice(0, 107)}…` : firstSentence;
+  } catch {
+    return "";
+  }
+}
 
 export interface InstallToolkitOptions {
   skills?: string[];
@@ -75,6 +110,7 @@ export interface InstallToolkitResult {
 export async function installToolkit(opts: InstallToolkitOptions = {}): Promise<InstallToolkitResult> {
   const args = ["-y", "skills@latest", "add", SUPERWALL_SKILLS_SOURCE, "--global", "--yes"];
   if (opts.skills?.length) args.push("--skill", ...opts.skills);
+  else args.push("--skill", "*");
   return runInstall(args, opts);
 }
 

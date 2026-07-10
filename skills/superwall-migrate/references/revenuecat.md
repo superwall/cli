@@ -104,7 +104,7 @@ superwall products create com.app.pro_monthly --name "Pro Monthly"
 superwall products create com.app.pro_yearly  --name "Pro Yearly"
 ```
 Product ids MUST equal the existing App Store / Play SKUs (import via ASC connection instead of
-manual create when possible — `superwall secrets set app-store-connect`). Then one campaign with
+manual create when possible — `superwall asc keys set`). Then one campaign with
 a placement per call site:
 ```
 superwall campaigns create "Main paywall"

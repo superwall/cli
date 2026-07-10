@@ -1,6 +1,7 @@
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";
-import { KNOWN_SKILLS, SUPERWALL_SKILLS_SOURCE, installToolkit, installBundledSkills } from "@/core/agent/skills";
+import { SUPERWALL_SKILLS_SOURCE, fetchToolkitSkills, installToolkit, installBundledSkills } from "@/core/agent/skills";
 
 export const runSkills = defineCommand(async (ctx) => {
   ui.intro("Superwall agent toolkit");
@@ -9,19 +10,21 @@ export const runSkills = defineCommand(async (ctx) => {
   const { dryRun, plain } = ctx;
 
   if (!skills && !dryRun && !plain) {
+    const available = await withSpinner(`Fetching skills from ${SUPERWALL_SKILLS_SOURCE}`, fetchToolkitSkills);
     const picked = await ui.multiselect({
       message: `Which skills from ${SUPERWALL_SKILLS_SOURCE}? (installs globally)`,
-      options: KNOWN_SKILLS.map((s) => ({ value: s.name, label: s.name, hint: s.summary })),
-      initialValues: KNOWN_SKILLS.map((s) => s.name),
+      options: available.map((s) => ({ value: s.name, label: s.name, hint: s.summary })),
+      initialValues: available.map((s) => s.name),
     });
     if (picked === null || picked.length === 0) {
       ui.warn("Nothing selected.");
       return;
     }
-    skills = picked;
+    skills = picked.length === available.length ? undefined : picked;
+  } else if (skills?.length) {
+    ui.info(`Installing \`${skills.join("`, `")}\` from ${SUPERWALL_SKILLS_SOURCE}`);
   } else {
-    const shown = skills?.length ? KNOWN_SKILLS.filter((s) => skills!.includes(s.name)) : KNOWN_SKILLS;
-    ui.note(shown.map((s) => `\`${s.name}\`\n  ${s.summary}`).join("\n\n"), "Installing globally");
+    ui.info(`Installing every skill from ${SUPERWALL_SKILLS_SOURCE}`);
   }
 
   const spin = ui.spinner();

@@ -5,12 +5,16 @@ import { ascProxy, listAscConfigs } from "@/core/api/asc";
 import { ascTypeDisplay, fetchUnimportedAscProducts, findAscAppId, listAscApps } from "@/core/api/asc-products";
 import { parseParams } from "@/util/params";
 import { apiCall, emitJson } from "@/util/api-output";
+import { runAscKeys } from "./keys";
 
 const VERBS = new Set(["get", "post", "patch", "delete"]);
 
 export const runAsc = defineCommand(async (ctx) => {
   const api = SuperwallApi.fromSession();
   const target = String(ctx.argv.target ?? "");
+
+  if (target === "keys") return runAscKeys(ctx, api);
+
   const teamId = await resolveTeam(ctx, api);
 
   if (VERBS.has(target)) {
@@ -49,7 +53,7 @@ export const runAsc = defineCommand(async (ctx) => {
     return;
   }
 
-  throw new Error(`Unknown "${target}". Use get|post|patch|delete <path>, a raw path, or: apps | products | subscriptions | iaps`);
+  throw new Error(`Unknown "${target}". Use get|post|patch|delete <path>, a raw path, or: apps | products | subscriptions | iaps | keys`);
 });
 
 async function resolveTeam(ctx: CommandContext, api: SuperwallApi): Promise<string> {
@@ -57,7 +61,7 @@ async function resolveTeam(ctx: CommandContext, api: SuperwallApi): Promise<stri
   if (flag) return flag;
   const configs = await apiCall(ctx, "Finding App Store Connect", () => listAscConfigs(api));
   if (configs.length === 0) {
-    throw new Error("App Store Connect isn't connected. Connect it with `superwall secrets set app-store-connect …`.");
+    throw new Error("App Store Connect isn't connected. Connect it with `superwall asc keys set …`.");
   }
   if (configs.length > 1) {
     const teams = configs.map((c) => String(c.team_id ?? c.id ?? "")).join(", ");

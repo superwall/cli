@@ -62,7 +62,6 @@ function Inline({ line }: { line: string }): React.ReactElement {
 function ReportBlock({ text }: { text: string }): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text dimColor>│</Text>
       {text.split("\n").map((line, i) => (
         <Box key={i}>
           <Text dimColor>│ </Text>
@@ -71,7 +70,6 @@ function ReportBlock({ text }: { text: string }): React.ReactElement {
           </Box>
         </Box>
       ))}
-      <Text dimColor>│</Text>
     </Box>
   );
 }
@@ -102,7 +100,6 @@ function NoteBlock({ title, text }: { title?: string; text: string }): React.Rea
           ))}
         </Box>
       </Box>
-      <Text dimColor>│</Text>
     </Box>
   );
 }
@@ -146,21 +143,47 @@ function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): Rea
   );
 }
 
-function TimelineRow({ item }: { item: TimelineItem }): React.ReactElement {
-  if (item.kind === "report") return <ReportBlock text={item.text} />;
-  if (item.kind === "note") return <NoteBlock title={item.title} text={item.text} />;
-  if (item.kind === "list") return <ListBlock items={item.list?.items ?? []} empty={item.list?.empty} />;
+/**
+ * One timeline entry. Connectors are a PREFIX of every item after the first —
+ * never a trailing line — so the timeline can't dangle when a command ends
+ * without an outro (stop() caps it with `└`). The outro itself attaches
+ * directly to the previous row: no empty `│` tail before the cap.
+ */
+function TimelineRow({ item, first }: { item: TimelineItem; first: boolean }): React.ReactElement {
+  const connector = !first && item.kind !== "outro" ? <Text dimColor>│</Text> : null;
 
-  if (item.kind === "intro") {
-    const [first = "Superwall", ...rest] = item.text.split(" ");
+  if (item.kind === "report")
     return (
       <Box flexDirection="column">
+        {connector}
+        <ReportBlock text={item.text} />
+      </Box>
+    );
+  if (item.kind === "note")
+    return (
+      <Box flexDirection="column">
+        {connector}
+        <NoteBlock title={item.title} text={item.text} />
+      </Box>
+    );
+  if (item.kind === "list")
+    return (
+      <Box flexDirection="column">
+        {connector}
+        <ListBlock items={item.list?.items ?? []} empty={item.list?.empty} />
+      </Box>
+    );
+
+  if (item.kind === "intro") {
+    const [firstWord = "Superwall", ...rest] = item.text.split(" ");
+    return (
+      <Box flexDirection="column">
+        {connector}
         <Box>
           <Text color={PRIMARY}>◆ </Text>
-          <Text color={PRIMARY} bold>{first}</Text>
+          <Text color={PRIMARY} bold>{firstWord}</Text>
           {rest.length ? <Text dimColor> {rest.join(" ")}</Text> : null}
         </Box>
-        <Text dimColor>│</Text>
       </Box>
     );
   }
@@ -169,12 +192,17 @@ function TimelineRow({ item }: { item: TimelineItem }): React.ReactElement {
   const lines = item.text.split("\n");
   return (
     <Box flexDirection="column">
+      {connector}
       <Box>
         <Text color={color} dimColor={dim}>
           {char}
         </Text>
-        <Text>  </Text>
-        <Inline line={lines[0] ?? ""} />
+        {item.text ? (
+          <>
+            <Text>  </Text>
+            <Inline line={lines[0] ?? ""} />
+          </>
+        ) : null}
       </Box>
       {lines.slice(1).map((l, i) => (
         <Box key={i}>
@@ -182,7 +210,6 @@ function TimelineRow({ item }: { item: TimelineItem }): React.ReactElement {
           <Text dimColor>{l}</Text>
         </Box>
       ))}
-      {item.kind !== "outro" ? <Text dimColor>│</Text> : null}
     </Box>
   );
 }
@@ -413,8 +440,15 @@ export function App(): React.ReactElement {
   const s = useStore();
   return (
     <Box flexDirection="column">
-      <Static items={s.items}>{(item) => <TimelineRow key={item.id} item={item} />}</Static>
-      {s.active ? <ActiveRegion active={s.active} /> : null}
+      <Static items={s.items}>
+        {(item, index) => <TimelineRow key={item.id} item={item} first={index === 0} />}
+      </Static>
+      {s.active ? (
+        <Box flexDirection="column">
+          {s.items.length > 0 ? <Text dimColor>│</Text> : null}
+          <ActiveRegion active={s.active} />
+        </Box>
+      ) : null}
     </Box>
   );
 }

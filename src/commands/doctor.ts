@@ -1,9 +1,11 @@
+import pc from "picocolors";
 import { ui } from "@/ui";
 import { defineCommand } from "@/command";
 import { detectDrivers } from "@/core/agent/drivers";
 import { scanProject } from "@/core/project/scan";
 import { detectExisting } from "@/core/project/existing";
 import { apiKeyFromEnv } from "@/util/env";
+import { loadSession } from "@/core/auth/storage";
 
 export const runDoctor = defineCommand(async (ctx) => {
   ui.intro("Superwall doctor");
@@ -14,29 +16,29 @@ export const runDoctor = defineCommand(async (ctx) => {
   const scan = await scanProject(ctx.installDir);
   spin.stop("Checks complete");
 
-  check(drivers.length > 0, `Coding agent: ${drivers.map((d) => d.info.displayName).join(", ") || "none"}`);
-
   const top = scan.apps[0];
-  if (!top && scan.comingSoon[0]) {
-    check(false, `Project: ${scan.comingSoon[0].framework.name} (web — coming soon)`);
-  } else {
-    check(!!top, top ? `Project: ${top.framework.name}${top.details ? ` (${top.details})` : ""}` : "Project: not detected");
-  }
+  const existing = top ? detectExisting(top) : null;
+  const session = loadSession();
 
-  if (top) {
-    const existing = detectExisting(top);
-    check(existing.sdkInstalled, `SDK installed: ${existing.sdkInstalled ? "yes" : "no"}`);
-    check(existing.configureFound, `configure() present: ${existing.configureFound ? "yes" : "no"}`);
-    check(!!existing.apiKey, existing.apiKey ? `API key in project: ${existing.apiKey}` : "API key in project: none");
-  }
+  const rows: Array<[ok: boolean, label: string, value: string]> = [
+    [drivers.length > 0, "Coding agent", drivers.map((d) => d.info.displayName).join(", ") || "none found"],
+    top
+      ? [true, "Project", `${top.framework.name}${top.details ? ` · ${top.details}` : ""}`]
+      : scan.comingSoon[0]
+        ? [false, "Project", `${scan.comingSoon[0].framework.name} (web — coming soon)`]
+        : [false, "Project", "not detected"],
+    ...(existing
+      ? ([
+          [existing.sdkInstalled, "SDK", existing.sdkInstalled ? "installed" : "not installed"],
+          [existing.configureFound, "configure()", existing.configureFound ? "present" : "missing"],
+          [!!existing.apiKey, "API key", existing.apiKey ?? "none in project"],
+        ] as Array<[boolean, string, string]>)
+      : []),
+    [!!session || !!apiKeyFromEnv(), "Logged in", session ? (session.userEmail ?? session.orgName ?? "yes") : apiKeyFromEnv() ? "via SUPERWALL_API_KEY" : "no — run `superwall login`"],
+  ];
 
-  if (apiKeyFromEnv()) check(true, "API key: found in environment");
+  ui.report(rows.map(([ok, label, value]) => `${ok ? pc.green("✓") : pc.red("✗")} ${label.padEnd(13)} ${value}`).join("\n"));
 
-  ui.note("Coming soon: placement ↔ campaign and product ↔ App Store Connect checks.", "Roadmap");
-  ui.outro("");
+  const failed = rows.filter(([ok]) => !ok).length;
+  ui.outro(failed === 0 ? "All checks passed." : `${failed} of ${rows.length} checks need attention.`);
 });
-
-function check(ok: boolean, text: string): void {
-  if (ok) ui.success(text);
-  else ui.warn(text);
-}

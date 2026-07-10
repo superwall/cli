@@ -41,8 +41,7 @@ Onboarding (agent-driven):
 | --- | --- |
 | `superwall` | Shows help. |
 | `superwall integrate` (alias `wizard`) | Full pipeline: SDK → products → campaigns & placements → paywall → verify. |
-| `superwall placements review \| implement` | Audit / add `register()` calls at the right gates. |
-| `superwall dashboard` | Create a campaign + placement so paywalls present. |
+| `superwall review [--fix]` | Audit placements & campaign coverage; `--fix` implements the findings. |
 | `superwall migrate` | Migrate from RevenueCat / Adapty / Qonversion. |
 
 Every workflow above also takes `--skill`: instead of the CLI orchestrating an
@@ -60,16 +59,17 @@ The dashboard, in your terminal (`--json` on all; auto-scoped by project/app):
 | `superwall entitlements [list \| create <id>]` | Entitlements. |
 | `superwall campaigns [list \| create <desc> \| placement <id> <name>]` | Campaigns + placements. |
 | `superwall paywalls list` | Paywalls. |
-| `superwall secrets <set \| list \| rm> app-store-connect …` | App Store Connect API key (for auto product import). |
-| `superwall asc <get\|post\|…> /v1/… ` / `asc apps \| products <app>` | The App Store Connect API via Superwall's signed proxy — no `.p8`/JWT needed. |
+| `superwall asc keys <list \| set \| rm> …` | App Store Connect API key (for auto product import). |
 
-Local-first (Monetization-as-Code — `superwall.json` ↔ cloud):
+Raw API (Stripe-style, session-authenticated):
 
 | Command | Description |
 | --- | --- |
-| `superwall pull` / `plan` / `push` | Reconcile entitlements + products between file and cloud. |
+| `superwall bootstrap` | Org → project → app overview of the account. |
+| `superwall get \| post \| patch \| delete /v2/… [-d k=v]` | Any Superwall API endpoint (`-d k=v` string, `k:=v` typed, query params on get/delete). |
+| `superwall asc <get\|post\|…> /v1/… ` / `asc apps \| products <app>` | The App Store Connect API via Superwall's signed proxy — no `.p8`/JWT needed. |
 
-Toolkit / utility: `superwall skills`, `superwall doctor`, `superwall scan [--json]`.
+Toolkit / utility: `superwall skills`, `superwall doctor`.
 
 Global flags: `--json`, `--dry-run`, `--install-dir <dir>`, `--project <id>`, `--app <id>`.
 
@@ -139,7 +139,7 @@ src/
     auth/                device-flow OAuth + session storage
     account/             org / app / key resolution
     project/             what is this local app: scan, existing SDK, billing, frameworks
-    dashboard/           cloud-state flows: setup stages, superwall.json sync, storekit
+    dashboard/           cloud-state flows: setup stages, storekit generation
     state/               ~/.superwall persistence (config, reports)
   ui/                    Ink (interactive) + plain (agent) renderers behind one facade
   util/                  clipboard, env, params, fs, assets, api-output

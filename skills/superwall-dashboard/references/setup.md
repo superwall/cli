@@ -37,15 +37,15 @@ resolve it on device.
 
 There is **no** `products import` subcommand. Two ways to import:
 
-1. **Orchestrated (hands-off):** run `superwall dashboard` or `superwall integrate` — the CLI
+1. **Orchestrated (hands-off):** run `superwall integrate` — the CLI
    walks App Store Connect and imports products interactively.
 2. **Agent-driven (you do it):** connect the key once, enumerate via the signed ASC proxy, then
    create each product:
 
    ```bash
    # one-time: upload the ASC API key to Superwall's vault (nothing stored locally)
-   superwall secrets set app-store-connect --key-id <KEY_ID> --issuer <ISSUER_ID> --key-file ./AuthKey_XXptr.p8
-   superwall secrets list                       # confirm connected; note the team id
+   superwall asc keys set --key-id <KEY_ID> --issuer <ISSUER_ID> --key-file ./AuthKey_XXptr.p8
+   superwall asc keys list                       # confirm connected; note the team id
 
    # enumerate real products for the app (by bundle id or ASC app id)
    superwall asc subscriptions com.app.bundle --json   # renewing subs

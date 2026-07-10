@@ -41,7 +41,7 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
    `superwall entitlements create pro --json`. Default to a single `pro` entitlement unless the
    app clearly has tiers.
 4. **Ensure products.** `superwall products list --json` first. If none:
-   - App Store Connect connected (`superwall secrets list`) → import (see references/setup.md).
+   - App Store Connect connected (`superwall asc keys list`) → import (see references/setup.md).
    - Otherwise create with real pricing:
      `superwall products create pro_yearly --price 39.99 --period year --trial-days 7 --entitlement pro --json`
 5. **Carry each placement.** `superwall campaigns list --json`. For each placement not already on

@@ -202,16 +202,6 @@ async function doCreate(ctx: CommandContext, api: SuperwallApi, resource: Resour
   const value = argv.value as string | undefined;
   if (!value) throw new Error(`Usage: superwall ${resource} create <${createArgLabel(resource)}>`);
 
-  // Projects aren't created directly — they're spun up when you add the first platform.
-  if (resource === "projects") {
-    throw new Error(
-      "Projects are created for you. Add a platform instead:\n" +
-        "  superwall apps create <name> --platform ios [--bundle <id>]\n" +
-        "  superwall apps create <name> --platform ios --project <projectId>   # add to an existing project",
-    );
-  }
-
-  // An app is a platform of a project; without --project a new project is spun up for it.
   if (resource === "apps") {
     const platform = argv.platform as string | undefined;
     if (!platform) {

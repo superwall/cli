@@ -100,7 +100,7 @@ superwall campaigns create "Main paywall"
 superwall campaigns placement <campaignId> main
 superwall campaigns placement <campaignId> onboarding
 ```
-Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall secrets set app-store-connect`).
+Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set`).
 Verify: `superwall entitlements list --json`, `superwall products list --json`, `superwall campaigns list --json`.
 
 ## 5. Code replacement

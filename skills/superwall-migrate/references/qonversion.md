@@ -96,7 +96,7 @@ superwall products create com.app.premium_yearly  --name "Premium Yearly"
 superwall campaigns create "Main paywall"
 superwall campaigns placement <campaignId> paywall_main
 ```
-Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall secrets set app-store-connect`).
+Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set`).
 Verify: `superwall entitlements list --json`, `superwall products list --json`, `superwall campaigns list --json`.
 
 ## 5. Code replacement
