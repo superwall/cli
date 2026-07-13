@@ -9,6 +9,7 @@ import type {
   DriverInfo,
 } from "./types";
 import { onPath, readVersion, spawnStream } from "./spawn";
+import { isUsageLimitText } from "./limits";
 
 const BIN = "codex";
 
@@ -67,17 +68,22 @@ export const codexDriver: AgentDriver = {
     ];
 
     let ok = false;
+    let usageLimited = false;
     const { code } = await spawnStream({
       bin: BIN,
       args,
       cwd: opts.cwd,
       signal: opts.signal,
       onStdoutLine: (line) => {
+        if (isUsageLimitText(line)) usageLimited = true;
         try {
           normalizeCodexEvent(JSON.parse(line), opts.onEvent);
         } catch {
           /* ignore */
         }
+      },
+      onStderrLine: (line) => {
+        if (isUsageLimitText(line)) usageLimited = true;
       },
     });
     ok = code === 0;
@@ -92,6 +98,10 @@ export const codexDriver: AgentDriver = {
     }
 
     if (!ok) opts.onEvent?.({ type: "error", message: `codex exited with code ${code}` });
-    return { finalText, ok };
+    return {
+      finalText,
+      ok,
+      failureReason: !ok && (usageLimited || isUsageLimitText(finalText)) ? "usage-limit" : undefined,
+    };
   },
 };

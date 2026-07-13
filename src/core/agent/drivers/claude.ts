@@ -7,6 +7,7 @@ import type {
   DriverInfo,
 } from "./types";
 import { onPath, readVersion, spawnStream } from "./spawn";
+import { isUsageLimitText } from "./limits";
 
 const BIN = "claude";
 
@@ -68,6 +69,7 @@ export const claudeDriver: AgentDriver = {
 
     let finalText: string | undefined;
     let ok = false;
+    let usageLimited = false;
 
     const { code } = await spawnStream({
       bin: BIN,
@@ -75,6 +77,7 @@ export const claudeDriver: AgentDriver = {
       cwd: opts.cwd,
       signal: opts.signal,
       onStdoutLine: (line) => {
+        if (isUsageLimitText(line)) usageLimited = true;
         let msg: Record<string, unknown>;
         try {
           msg = JSON.parse(line);
@@ -88,12 +91,18 @@ export const claudeDriver: AgentDriver = {
           ok = msg.subtype === "success" && msg.is_error !== true;
         }
       },
-      onStderrLine: () => {},
+      onStderrLine: (line) => {
+        if (isUsageLimitText(line)) usageLimited = true;
+      },
     });
 
     if (code !== 0 && !ok) {
       opts.onEvent?.({ type: "error", message: `claude exited with code ${code}` });
     }
-    return { finalText, ok };
+    return {
+      finalText,
+      ok,
+      failureReason: !ok && (usageLimited || isUsageLimitText(finalText)) ? "usage-limit" : undefined,
+    };
   },
 };

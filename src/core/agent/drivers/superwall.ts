@@ -13,6 +13,7 @@ import type {
   AgentRunOptions,
   DriverInfo,
 } from "./types";
+import { isUsageLimitText } from "./limits";
 
 const SDK_MODEL_ALIAS = "claude-sonnet-5";
 
@@ -109,7 +110,11 @@ export const superwallDriver: AgentDriver = {
     const auth = await getRunAuth();
     if (!auth.ok) {
       opts.onEvent?.({ type: "error", message: auth.message });
-      return { ok: false, finalText: auth.message };
+      return {
+        ok: false,
+        finalText: auth.message,
+        failureReason: isUsageLimitText(auth.message) ? "usage-limit" : undefined,
+      };
     }
 
     const abortController = new AbortController();
@@ -150,11 +155,19 @@ export const superwallDriver: AgentDriver = {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       opts.onEvent?.({ type: "error", message });
-      return { ok: false, finalText: message };
+      return {
+        ok: false,
+        finalText: message,
+        failureReason: isUsageLimitText(message) ? "usage-limit" : undefined,
+      };
     } finally {
       opts.signal?.removeEventListener("abort", onAbort);
     }
 
-    return { finalText, ok };
+    return {
+      finalText,
+      ok,
+      failureReason: !ok && isUsageLimitText(finalText) ? "usage-limit" : undefined,
+    };
   },
 };

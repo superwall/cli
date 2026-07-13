@@ -50,6 +50,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     return;
   }
   const driver = picked!.driver;
+  const fallbackDrivers = wanted ? [] : drivers.filter((candidate) => candidate !== picked).map((candidate) => candidate.driver);
 
   const app = await pickApp(installDir);
   if (!app) return;
@@ -156,7 +157,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
       }
       return;
     }
-    await runActionWithUI(driver, actionById["integrate"], ctxAction);
+    await runActionWithUI(driver, fallbackDrivers, actionById["integrate"], ctxAction);
     const spin = ui.spinner();
     spin.start("Installing Superwall skills for your agent");
     const ok = await installAgentSkills();
@@ -182,7 +183,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     const stageCtx: StageCtx = { api: SuperwallApi.fromSession(), scope, appName: app.name, bundleId, projectDir: app.path };
     await stage("Step 2 · Products", () => runProductsStage(stageCtx));
     await stage("Step 3 · Campaigns & Placements", () =>
-      runCampaignsAndPlacements(driver, ctxAction, stageCtx, ensureAgentReady),
+      runCampaignsAndPlacements(driver, fallbackDrivers, ctxAction, stageCtx, ensureAgentReady),
     );
     await stage("Step 4 · Paywall", () => runPaywallStage());
     await stage("Step 5 · Verify", () => runVerifyStage(stageCtx));
@@ -205,6 +206,7 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     return;
   }
   const driver = drivers[0]!;
+  const fallbackDrivers = drivers.slice(1).map((candidate) => candidate.driver);
   let session = loadSession();
   const ensureLogin = async (): Promise<boolean> => {
     if (session) return true;
@@ -254,7 +256,7 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     ui.note("SDK + configure() already present — no code changes made.", "Already integrated");
   } else {
     if (!(await ensureAgentDriverReady(driver.driver, ensureLogin, dryRun))) return;
-    await runActionWithUI(driver.driver, action, actionCtx);
+    await runActionWithUI(driver.driver, fallbackDrivers, action, actionCtx);
   }
 
   if (action.id === "integrate" && !existing.fullyIntegrated && !dryRun) {
@@ -419,6 +421,7 @@ async function copyIntegrationPrompt(ctx: ActionContext): Promise<void> {
 // A placement only presents a paywall once routed through a campaign, so set both up together.
 async function runCampaignsAndPlacements(
   driver: AgentDriver,
+  fallbackDrivers: AgentDriver[],
   ctxAction: ActionContext,
   stageCtx: StageCtx,
   ensureAgentReady: () => Promise<boolean>,
@@ -448,12 +451,12 @@ async function runCampaignsAndPlacements(
 
   const context: ActionContext = { ...ctxAction, campaigns: campaignSummary(campaigns) };
   if (!(await ensureAgentReady())) return;
-  await runActionWithUI(driver, actionById["placements-review"], context);
+  await runActionWithUI(driver, fallbackDrivers, actionById["placements-review"], context);
 
   const apply = await ui.confirm({ message: "Apply the suggested changes?" });
   if (apply) {
     if (!(await ensureAgentReady())) return;
-    await runActionWithUI(driver, actionById["placements-implement"], {
+    await runActionWithUI(driver, fallbackDrivers, actionById["placements-implement"], {
       ...context,
       priorReport: loadReport(ctxAction.app.path, "placements-review"),
     });
@@ -466,7 +469,7 @@ async function runCampaignsAndPlacements(
   const wire = await ui.confirm({ message: "Create campaigns so these placements can present paywalls?" });
   if (wire) {
     if (!(await ensureAgentReady())) return;
-    await runActionWithUI(driver, actionById["dashboard-setup"], {
+    await runActionWithUI(driver, fallbackDrivers, actionById["dashboard-setup"], {
       ...context,
       campaigns: campaignSummary(await listResource(api, "campaigns", scope).catch(() => campaigns)),
     });
@@ -491,11 +494,17 @@ function campaignSummary(campaigns: Row[]): string {
     .join("\n");
 }
 
-async function runActionWithUI(driver: AgentDriver, action: WizardAction, ctx: ActionContext): Promise<void> {
+async function runActionWithUI(
+  driver: AgentDriver,
+  fallbackDrivers: AgentDriver[],
+  action: WizardAction,
+  ctx: ActionContext,
+): Promise<void> {
   const spin = ui.spinner();
   spin.start(action.runningLabel);
   const result = await runAction({
     driver,
+    fallbackDrivers,
     action,
     ctx,
     onEvent: (event) => {

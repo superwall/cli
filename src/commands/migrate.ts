@@ -24,6 +24,7 @@ export const runMigrate = defineCommand(async (ctx) => {
     return;
   }
   const driver = drivers[0]!.driver;
+  const fallbackDrivers = drivers.slice(1).map((candidate) => candidate.driver);
 
   const scan = await scanProject(installDir);
   const app = scan.apps[0];
@@ -114,6 +115,7 @@ export const runMigrate = defineCommand(async (ctx) => {
   spin.start(`Migrating from ${provider}`);
   const result = await runAction({
     driver,
+    fallbackDrivers,
     action: actionById["migrate"],
     ctx: actionCtx,
     onEvent: (e) => {

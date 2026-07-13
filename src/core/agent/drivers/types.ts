@@ -17,6 +17,7 @@ export interface AgentRunOptions {
 export interface AgentResult {
   finalText?: string;
   ok: boolean;
+  failureReason?: "usage-limit";
 }
 
 export interface DriverInfo {
