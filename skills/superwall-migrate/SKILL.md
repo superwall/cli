@@ -63,15 +63,26 @@ If more than one is present, migrate the one that owns purchases; treat the othe
 5. **Verify** — build, present each placement, confirm existing subscribers are recognized
    (Restore Purchases), then remove the old SDK only in FULL mode.
 
-## Two modes — decide first (this is about who owns billing, not what migrates)
+## Three modes — decide who owns purchases first (this is about billing ownership, not what migrates)
 
-- **FULL** — Superwall owns billing. Remove the provider SDK; Superwall's built-in purchasing
-  and device-level entitlements take over. Simplest; use unless billing must stay put.
-- **PAYWALLS-ONLY** — provider stays the source of truth for purchases. Keep its SDK, install
-  Superwall with a `PurchaseController` that forwards buys to the provider and mirror its
-  entitlements into `Superwall.subscriptionStatus`. Use when the provider's receipt validation,
-  webhooks, or cross-platform entitlements must remain authoritative. (Observer mode is the
-  analytics-only variant: provider owns purchases AND paywalls, Superwall just records revenue.)
+Removing the provider is not the whole decision: something still has to purchase, restore, and
+**tell Superwall who is subscribed**. Superwall only auto-detects state when its own SDK made the
+purchase. Pick one (details + verified code in the provider playbook's §2):
+
+- **FULL, Superwall owns purchases** (default, simplest) — remove the provider SDK; Superwall's
+  built-in purchasing and device-level entitlements take over. No `PurchaseController`, no manual
+  status setting. Use unless the app keeps its own checkout/billing code.
+- **FULL, app keeps its own purchase flow** — provider gone, but the app still buys via custom UI /
+  direct StoreKit / Play Billing and uses Superwall only for paywalls. Superwall does NOT observe
+  purchases it didn't make, so you MUST sync state via ONE of: a `PurchaseController`, observer mode
+  (`SuperwallOptions.shouldObservePurchases = true`), or a manual `Superwall.shared.subscriptionStatus`
+  set on every change. Skip this and paywalls show to paying users. **The easiest mode to get wrong.**
+- **PAYWALLS-ONLY, provider stays purchase controller** — provider remains the source of truth for
+  purchases. Keep its SDK, install Superwall with a `PurchaseController` that forwards buys to the
+  provider and mirror its entitlements into `Superwall.shared.subscriptionStatus`. Use when the
+  provider's receipt validation, webhooks, or cross-platform entitlements must remain authoritative.
+  (Pure observer mode is the analytics-only variant: provider owns purchases AND paywalls, Superwall
+  just records revenue.)
 
 ## CLI — every Superwall-side resource
 
@@ -79,7 +90,7 @@ The authenticated `superwall` CLI performs all dashboard creates (logged-in sess
 
 - `superwall entitlements create <id>` · `superwall entitlements list --json`
 - `superwall products create <id> [--name <name>]` · `superwall products list --json`
-- `superwall campaigns create <description>` → `superwall campaigns placement <campaignId> <placement>` · `superwall campaigns list --json`
+- `superwall campaigns create "<description>" <placement>` (initial placement required) → more via `superwall campaigns placement <campaignId> <placement>` · `superwall campaigns list --json`
 
 ASC products can be imported via the products flow / an ASC connection (`superwall asc keys set …`) instead of manual creation.
 

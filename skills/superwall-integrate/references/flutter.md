@@ -211,7 +211,7 @@ Superwall.configure(apiKey, MyPurchaseController());
 
 ## Step 7 — Post-integration (wire what the app needs, then → placements)
 
-- **User identity** — `Superwall.shared.identify(user.id)` on login,
+- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `Superwall.shared.identify(user.id)` on login,
   `Superwall.shared.reset()` on logout. `userId` should be a **UUID** (StoreKit
   compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/flutter/quickstart/user-management.md`

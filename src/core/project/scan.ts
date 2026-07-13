@@ -147,10 +147,11 @@ function looksLikeMonorepoRoot(root: string): boolean {
 
 export async function scanProject(root: string): Promise<ScanResult> {
   const opts = { cwd: root, ignore: IGNORE, deep: SCAN_DEPTH } as const;
-  const [pkgPaths, xcodeProjects, packageSwifts, pubspecs] = await Promise.all([
+  const [pkgPaths, xcodeProjects, packageSwifts, tuistProjects, pubspecs] = await Promise.all([
     fg("**/package.json", opts),
     fg("**/*.xcodeproj", { ...opts, onlyDirectories: true }),
     fg("**/Package.swift", opts),
+    fg("**/Project.swift", opts),
     fg("**/pubspec.yaml", opts),
   ]);
 
@@ -169,7 +170,14 @@ export async function scanProject(root: string): Promise<ScanResult> {
 
   const swiftDirs = new Set<string>();
   for (const x of xcodeProjects) swiftDirs.add(dirname(join(root, x)));
-  for (const s of packageSwifts) swiftDirs.add(dirname(join(root, s)));
+  for (const s of packageSwifts) {
+    const dir = dirname(join(root, s));
+    // Tuist/Package.swift is Tuist's dependency manifest, not an app.
+    if (basename(dir) === "Tuist") continue;
+    swiftDirs.add(dir);
+  }
+  // Tuist projects: Project.swift is the manifest, the app lives at its dir.
+  for (const t of tuistProjects) swiftDirs.add(dirname(join(root, t)));
   for (const dir of swiftDirs) {
     if (isGeneratedNative(dir, jsRootSet)) continue;
     apps.push(makeApp(root, dir, { integration: Integration.swift, details: swiftUiKind(dir), score: 0.95 }));

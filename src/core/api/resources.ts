@@ -152,9 +152,16 @@ export function createApplication(
   });
 }
 
-export function createCampaign(api: SuperwallApi, scope: Scope, description: string): Promise<Row> {
+export function createCampaign(api: SuperwallApi, scope: Scope, description: string, placement: string): Promise<Row> {
   if (!scope.applicationId) throw new Error("This project has no application to create a campaign in.");
-  return api.post<Row>("/v2/campaigns", { application_id: scope.applicationId, description });
+  // The API requires >=1 placement and >=1 audience at creation. Seed a 100%
+  // holdout so nothing presents until a paywall is attached in the dashboard.
+  return api.post<Row>("/v2/campaigns", {
+    application_id: scope.applicationId,
+    description,
+    placements: [{ event_name: placement }],
+    audiences: [{ variants: [{ type: "holdout", percentage: 100, paywall: null }] }],
+  });
 }
 
 export function addPlacement(api: SuperwallApi, campaignId: string, placement: string): Promise<Row> {

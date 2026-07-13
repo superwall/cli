@@ -256,7 +256,7 @@ Superwall.shared.subscriptionStatus = .inactive
 
 Do the ones the app requires. Each has a fetchable page.
 
-- **User identity** — call `Superwall.shared.identify(userId:)` on login,
+- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). call `Superwall.shared.identify(userId:)` on login,
   `Superwall.shared.reset()` on logout. `userId` **must be a valid UUID** (StoreKit
   compat) and must not be an email, device id, or guessable value.
   `curl -sL https://superwall.com/docs/ios/quickstart/user-management.md`

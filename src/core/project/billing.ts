@@ -20,7 +20,7 @@ export function detectBilling(app: DetectedApp): BillingDetection {
   let qonversion = inDeps(["react-native-qonversion", "qonversion_flutter"]);
 
   const manifests = fg.sync(
-    ["**/Package.resolved", "**/Podfile", "**/Podfile.lock", "**/project.pbxproj", "**/*.gradle", "**/*.gradle.kts", "**/pubspec.yaml", "**/pubspec.lock"],
+    ["**/Package.resolved", "**/Package.swift", "**/Project.swift", "**/Podfile", "**/Podfile.lock", "**/project.pbxproj", "**/*.gradle", "**/*.gradle.kts", "**/pubspec.yaml", "**/pubspec.lock"],
     { cwd: app.path, ignore: IGNORE, absolute: true, deep: 5 },
   );
   for (const f of manifests) {
@@ -33,6 +33,22 @@ export function detectBilling(app: DetectedApp): BillingDetection {
     if (/RevenueCat|\bPurchases\b/i.test(c)) revenueCat = true;
     if (/Adapty/i.test(c)) adapty = true;
     if (/Qonversion/i.test(c)) qonversion = true;
+  }
+
+  // Manifests can miss (Tuist, vendored SDKs) — source imports are the strongest signal.
+  if (!revenueCat || !adapty || !qonversion) {
+    const sources = fg.sync(["**/*.swift", "**/*.kt"], { cwd: app.path, ignore: IGNORE, absolute: true, deep: 6 }).slice(0, 600);
+    for (const f of sources) {
+      let c: string;
+      try {
+        c = readFileSync(f, "utf8");
+      } catch {
+        continue;
+      }
+      if (/import RevenueCat|com\.revenuecat/.test(c)) revenueCat = true;
+      if (/import Adapty|com\.adapty/.test(c)) adapty = true;
+      if (/import Qonversion|com\.qonversion/.test(c)) qonversion = true;
+    }
   }
 
   return { revenueCat, adapty, qonversion };

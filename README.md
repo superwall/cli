@@ -57,7 +57,7 @@ The dashboard, in your terminal (`--json` on all; auto-scoped by project/app):
 | `superwall apps list` | Apps + their `pk_` keys. |
 | `superwall products [list \| create <id> \| storekit]` | Products; generate a local `.storekit`. |
 | `superwall entitlements [list \| create <id>]` | Entitlements. |
-| `superwall campaigns [list \| create <desc> \| placement <id> <name>]` | Campaigns + placements. |
+| `superwall campaigns [list \| create "<desc>" <placement> \| placement <id> <name>]` | Campaigns + placements (create requires an initial placement). |
 | `superwall paywalls list` | Paywalls. |
 | `superwall asc keys <list \| set \| rm> …` | App Store Connect API key (for auto product import). |
 

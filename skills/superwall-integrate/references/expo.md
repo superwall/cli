@@ -204,7 +204,7 @@ export class MyPurchaseController extends PurchaseController {
 
 The Expo SDK exposes these through the **`useUser`** hook and event hooks.
 
-- **User identity** — `identify(userId)` on login, `signOut()` on logout. `userId`
+- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `identify(userId)` on login, `signOut()` on logout. `userId`
   should be a **UUID** (StoreKit compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/expo/quickstart/user-management.md`
   ```tsx

@@ -45,8 +45,7 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
    - Otherwise create with real pricing:
      `superwall products create pro_yearly --price 39.99 --period year --trial-days 7 --entitlement pro --json`
 5. **Carry each placement.** `superwall campaigns list --json`. For each placement not already on
-   a campaign: `superwall campaigns create "<description>" --app <id> --json`, then
-   `superwall campaigns placement <campaignId> <placement> --app <id> --json`.
+   a campaign: `superwall campaigns create "<description>" <placement> --app <id> --json` (campaigns require an initial placement; it seeds a 100% holdout audience), or add more with    `superwall campaigns placement <campaignId> <placement> --app <id> --json`.
 
 ## Guardrails
 

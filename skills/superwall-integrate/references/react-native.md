@@ -195,7 +195,7 @@ export class MyPurchaseController extends PurchaseController {
 
 Path A uses the `useUser` hook; Path B uses static `Superwall` methods.
 
-- **User identity** — Path A: `const { identify, signOut } = useUser()`. Path B:
+- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). Path A: `const { identify, signOut } = useUser()`. Path B:
   `Superwall.shared.identify(userId)` / `Superwall.shared.reset()`. `userId` should
   be a **UUID** (StoreKit compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/expo/quickstart/user-management.md`

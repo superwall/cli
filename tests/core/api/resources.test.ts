@@ -68,11 +68,16 @@ test("createProduct includes name only when provided", async () => {
   assert.deepEqual(recs[0]!.body, { project_id: "9", identifier: "com.app.pro", name: "Pro" });
 });
 
-test("createCampaign posts {application_id, description} and requires an app", async () => {
+test("createCampaign posts placement + holdout audience and requires an app", async () => {
   const recs = mockFetch(() => ({ id: 7 }));
-  await createCampaign(api, SCOPE, "My campaign");
-  assert.deepEqual(recs[0]!.body, { application_id: "42", description: "My campaign" });
-  assert.throws(() => createCampaign(api, { projectId: "9" }, "x"), /no application/);
+  await createCampaign(api, SCOPE, "My campaign", "onboarding_complete");
+  assert.deepEqual(recs[0]!.body, {
+    application_id: "42",
+    description: "My campaign",
+    placements: [{ event_name: "onboarding_complete" }],
+    audiences: [{ variants: [{ type: "holdout", percentage: 100, paywall: null }] }],
+  });
+  assert.throws(() => createCampaign(api, { projectId: "9" }, "x", "p"), /no application/);
 });
 
 test("rowName prefers name, then identifier, then id", () => {

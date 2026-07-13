@@ -50,12 +50,32 @@ curl -sL https://superwall.com/docs/support/faq/how-to-migrate-from-another-prov
 fetch products, and present. In Superwall you just `register(placement:)` at the call site and the
 **campaign** decides whether/which paywall shows. The decision moves from app code to the dashboard.
 
-## 2. Two modes
+## 2. Three modes — decide who owns purchases first
 
-### FULL — Superwall owns billing (default)
-Remove Adapty. Superwall handles purchase/restore and computes entitlements from device records. No `PurchaseController`.
+Once Adapty is gone, something still has to purchase, restore, and **tell Superwall who is
+subscribed** — Superwall only auto-detects state when its own SDK made the purchase.
 
-### PAYWALLS-ONLY — Adapty stays source of truth
+### Mode A — FULL, Superwall owns purchases (default)
+Remove Adapty. Superwall handles purchase/restore and computes entitlements from device records. No `PurchaseController`, no manual status setting.
+
+### Mode B — FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
+Adapty is gone, but the app still buys through its own code and uses Superwall only for paywalls.
+Superwall does NOT observe purchases it didn't make.
+
+> **Important:** From advanced-configuration, verbatim: "You **must** set
+> `Superwall.shared.subscriptionStatus` every time the user's subscription status changes, otherwise
+> the SDK won't know who to show a paywall to." Do exactly ONE of: (1) implement a `PurchaseController`
+> that sets `subscriptionStatus`; (2) enable observer mode — `SuperwallOptions().shouldObservePurchases = true`
+> (then you can't call `Superwall.shared.purchase(...)`); or (3) push status manually after every
+> purchase/restore/expiry (iOS: from a `Transaction.currentEntitlements` read +
+> `Transaction.updates` listener; Expo/RN/Flutter: `Superwall.shared.setSubscriptionStatus(...)`).
+> Skip this and Superwall shows paywalls to paying users.
+```bash
+curl -sL https://superwall.com/docs/ios/quickstart/tracking-subscription-state.md   # + expo/ · flutter/ variants
+curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md
+```
+
+### Mode C — PAYWALLS-ONLY, Adapty stays the purchase controller
 Keep Adapty for purchases/receipts/webhooks; Superwall only shows paywalls. Implement a Superwall
 `PurchaseController` whose `purchase`/`restore` call Adapty, and mirror Adapty access levels into
 `Superwall.shared.subscriptionStatus` / `setSubscriptionStatus`. Confirm the exact
@@ -65,7 +85,7 @@ Keep Adapty for purchases/receipts/webhooks; Superwall only shows paywalls. Impl
 curl -sL https://superwall.com/docs/ios/guides/advanced-configuration.md
 ```
 
-*Observer mode* (analytics-only, Adapty owns purchases AND paywalls): `SuperwallOptions.shouldObservePurchases = true`. `curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`
+*Pure observer* (analytics-only, Adapty owns purchases AND paywalls): `SuperwallOptions.shouldObservePurchases = true`. `curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`
 
 ## 3. Codebase inventory — grep these symbols
 
@@ -168,6 +188,11 @@ regardless) vs gated (only when entitled). Peek: `Superwall.shared.getPresentati
 ## 8. Pitfalls
 - **Double-finish / double-charge.** Exactly one SDK finishes transactions. PAYWALLS-ONLY: Adapty owns purchasing via the controller; never also call `Superwall.shared.purchase`. FULL: remove Adapty purchase paths.
 - **StoreKit listener conflicts.** Two SDKs observing StoreKit → duplicate grants/races. One owner only.
+- **Silent "everyone sees a paywall" bug (Mode B).** Removed Adapty but kept the app's own purchase
+  flow (custom UI / direct StoreKit / Play Billing) without syncing state → Superwall treats every user
+  as unsubscribed and shows paywalls to payers. Grep for `purchase(` / `Transaction.updates` /
+  `BillingClient` outside Superwall; if purchases happen outside Superwall, sync via controller,
+  observer mode, or a manual `subscriptionStatus` set (§2 Mode B).
 - **Observer flag.** `shouldObservePurchases = true` disables `Superwall.shared.purchase`; observer mode only.
 - **Entitlement id mismatch.** Superwall entitlement ids must equal Adapty access-level ids exactly (`premium` ≠ `Premium`).
 - **Access-level nuances.** Adapty access levels also carry grace-period / lifetime / billing-issue states; when mirroring, treat `isActive` (incl. grace period per your policy) as entitled — don't silently drop grace-period users.

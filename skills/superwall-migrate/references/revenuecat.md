@@ -10,6 +10,11 @@ This migrates the **SDK integration**, not the whole product. Checklist:
 - [ ] Map products / entitlements / presentation call sites (§1)
 - [ ] Re-create products, entitlements, campaign + placements in Superwall via CLI (§4)
 - [ ] Swap SDK calls (configure, entitlement reads, presentation → placement, identify) (§5)
+- [ ] **Confirm subscription state reaches Superwall** — grep for `purchase(`, `Transaction.updates`,
+  `Transaction.currentEntitlements`, `BillingClient`, or any purchase call site *outside* Superwall.
+  If ANY purchase can happen without Superwall making it (Mode B / Mode C), verify state is synced
+  via a `PurchaseController`, observer mode, or a manual `subscriptionStatus` set — otherwise
+  Superwall shows paywalls to paying users (§2)
 - [ ] Build + verify each placement; Restore Purchases as an existing subscriber (§7)
 - [ ] FULL only: remove RC dependency once verified
 - [ ] Hand back to user: **rebuild paywalls in the editor**, attach products, connect ASC/Play
@@ -50,16 +55,75 @@ paywall shows, which one, and A/B variant. Move the *decision* out of the app an
 dashboard. The trailing feature closure runs when the user is entitled (gated) or always
 (non-gated) — see §6.
 
-## 2. Two modes
+## 2. Three modes — decide who owns purchases first
 
-### FULL — Superwall owns billing (default, simplest)
+Removing RevenueCat is not the whole decision. Once RC is gone, *something* still has to
+purchase, restore, and **tell Superwall who is subscribed**. Superwall only auto-detects
+subscription state when its own SDK made the purchase. Pick the mode that matches the app you
+actually have — the middle one is the easiest to get wrong.
+
+### Mode A — FULL, Superwall owns purchases (default, simplest)
 Remove RevenueCat entirely. Superwall's SDK handles purchase, restore, and entitlement
-computation from the device's App Store / Play records. No `PurchaseController`.
+computation from the device's App Store / Play records. No `PurchaseController`, no manual status
+setting. Use this unless the app has its own checkout UI or billing code you're keeping.
 
-### PAYWALLS-ONLY — RevenueCat stays source of truth
+### Mode B — FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
+RevenueCat is gone, but the app still buys through **its own code** — a custom purchase screen,
+direct StoreKit 2 / Play Billing, or a home-grown billing layer — and uses Superwall *only* to
+show paywalls and register placements. This is the mode that silently breaks: Superwall does NOT
+observe purchases it didn't make, so unless you sync state it thinks **every** user is unsubscribed
+and shows paywalls to people who already pay.
+
+> **Important:** From the advanced-configuration doc, verbatim: "You **must** set
+> `Superwall.shared.subscriptionStatus` every time the user's subscription status changes,
+> otherwise the SDK won't know who to show a paywall to." In this mode you MUST do exactly ONE of:
+> 1. **Implement a `PurchaseController`** — route your purchase/restore through it and set
+>    `subscriptionStatus` from it (same controller shape as §5, but calling your own billing code
+>    instead of RC).
+> 2. **Enable observer mode** — `SuperwallOptions().shouldObservePurchases = true`. Per the doc,
+>    observer mode "solely reports transaction completions" (revenue tracking) — entitlement/
+>    subscriptionStatus is kept current by Superwall's server-side pipeline (App Store Server
+>    Notifications + the dashboard product → entitlement mapping), so that mapping MUST exist for
+>    gating to work. You then CANNOT call `Superwall.shared.purchase(...)`.
+>    (`curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`)
+> 3. **Push status manually** — after every purchase / restore / expiry, set
+>    `Superwall.shared.subscriptionStatus` yourself (e.g. from a `Transaction.currentEntitlements`
+>    read plus a `Transaction.updates` listener on iOS).
+
+iOS manual-push sketch (verified against advanced-configuration.md → "Step 3: Keeping
+`subscriptionStatus` Up-To-Date"):
+```swift
+import SuperwallKit
+import StoreKit
+
+// Call once on launch, AND keep a `Transaction.updates` listener running so later
+// renewals/expiries/refunds re-run this — status must be pushed on EVERY change.
+func syncSubscriptionStatus() async {
+  var purchasedProductIds: Set<String> = []
+  for await verificationResult in Transaction.currentEntitlements {
+    if case .verified(let transaction) = verificationResult {
+      purchasedProductIds.insert(transaction.productID)
+    }
+  }
+  let entitlements = Superwall.shared.entitlements.byProductIds(purchasedProductIds)
+  await MainActor.run {
+    Superwall.shared.subscriptionStatus = entitlements.isEmpty ? .inactive : .active(entitlements)
+  }
+}
+```
+Expo / React Native and Flutter don't assign `subscriptionStatus` directly — they call
+`Superwall.shared.setSubscriptionStatus(...)` (RN uses `SubscriptionStatus.Active(entitlementIds)` /
+`.Inactive()`). Confirm the exact shape per framework:
+```bash
+curl -sL https://superwall.com/docs/ios/quickstart/tracking-subscription-state.md
+curl -sL https://superwall.com/docs/expo/quickstart/tracking-subscription-state.md
+curl -sL https://superwall.com/docs/flutter/quickstart/tracking-subscription-state.md
+```
+
+### Mode C — PAYWALLS-ONLY, RevenueCat stays the purchase controller
 Keep RevenueCat for purchases/receipts/webhooks; Superwall only shows paywalls. Implement a
 `PurchaseController` that forwards buys to RC and mirror RC's `customerInfo` into
-`Superwall.subscriptionStatus`. Use when RC's server-side entitlements, integrations, or
+`Superwall.shared.subscriptionStatus` (§5). Use when RC's server-side entitlements, integrations, or
 cross-platform/web receipts must stay authoritative.
 
 ```bash
@@ -67,7 +131,7 @@ curl -sL https://superwall.com/docs/ios/guides/using-revenuecat.md      # swap i
 ```
 Web-checkout variants: `.../guides/web-checkout/using-revenuecat` per framework.
 
-*Observer mode* (analytics-only, RC owns purchases AND paywalls): set
+*Pure observer* (analytics-only, RC owns purchases AND paywalls): set
 `options.shouldObservePurchases = true` on `SuperwallOptions`. Superwall records revenue but you
 CANNOT call `Superwall.shared.purchase(...)`. `curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`
 
@@ -218,6 +282,11 @@ migration from RevenueCat is coming soon but not yet available.)
 
 ## 8. Pitfalls
 
+- **Silent "everyone sees a paywall" bug (Mode B).** If you removed RC and kept the app's own
+  purchase flow (custom UI / direct StoreKit / Play Billing) but never told Superwall about
+  subscription state, Superwall treats every user as `.unknown`/`.inactive` and shows paywalls to
+  paying users. Any purchase happening outside Superwall REQUIRES a `PurchaseController`, observer
+  mode, or a manual `subscriptionStatus` set (§2 Mode B).
 - **Double-charge / dueling finishers.** In PAYWALLS-ONLY, only ONE SDK may finish transactions. Let RC own purchasing via the controller; do NOT also call `Superwall.shared.purchase`. In FULL, remove RC's purchase paths entirely so two SDKs don't both react to StoreKit.
 - **StoreKit listener conflicts.** Two SDKs observing StoreKit transactions cause duplicate grants/races. Pick one owner.
 - **Observer-mode flag.** `shouldObservePurchases = true` disables `Superwall.shared.purchase`. Only set it in observer (analytics-only) mode, never in FULL.

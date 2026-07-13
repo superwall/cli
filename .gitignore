@@ -8,3 +8,13 @@ dist/
 
 # local dev docs / scratch
 docs/
+
+# benchmark artifacts (fixtures are cloned/generated, results are run output)
+bench/fixtures/
+bench/results/
+bench/work/
+
+# bench system: keep lib/harness/README, ignore heavy artifacts
+bench/fixtures/
+bench/work/
+bench/results/

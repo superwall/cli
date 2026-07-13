@@ -82,7 +82,7 @@ export const ACTIONS: WizardAction[] = [
     allowedTools: READ_TOOLS,
     vars: (ctx) => ({
       campaigns: ctx.campaigns ?? "",
-      skill: loadBundledSkill("superwall-placements", FRAMEWORK_REF[ctx.app.framework.integration]),
+      skill: loadBundledSkill("superwall-placements", ["strategy", FRAMEWORK_REF[ctx.app.framework.integration]]),
     }),
   },
   {
@@ -99,7 +99,7 @@ export const ACTIONS: WizardAction[] = [
     vars: (ctx) => ({
       prior_report: ctx.priorReport ?? "",
       campaigns: ctx.campaigns ?? "",
-      skill: loadBundledSkill("superwall-placements", FRAMEWORK_REF[ctx.app.framework.integration]),
+      skill: loadBundledSkill("superwall-placements", ["strategy", FRAMEWORK_REF[ctx.app.framework.integration]]),
     }),
   },
   {

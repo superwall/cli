@@ -14,14 +14,15 @@ export function bundledSkillsDir(): string {
   return packagedDir("skills").replace(/\/$/, "");
 }
 
-/** SKILL.md body, plus references/<reference>.md when given (framework/provider-specific depth). */
-export function loadBundledSkill(id: BundledSkillId, reference?: string): string {
-  const key = reference ? `${id}#${reference}` : id;
+/** SKILL.md body, plus references/<name>.md for each given reference (framework/provider depth). */
+export function loadBundledSkill(id: BundledSkillId, reference?: string | Array<string | undefined>): string {
+  const refs = (Array.isArray(reference) ? reference : [reference]).filter((r): r is string => !!r);
+  const key = refs.length ? `${id}#${refs.join("+")}` : id;
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
   const skill = readSkillFile(`${id}/SKILL.md`);
-  const ref = reference ? readSkillFile(`${id}/references/${reference}.md`) : "";
-  const body = [skill, ref].filter(Boolean).join("\n\n");
+  const bodies = refs.map((r) => readSkillFile(`${id}/references/${r}.md`));
+  const body = [skill, ...bodies].filter(Boolean).join("\n\n");
   cache.set(key, body);
   return body;
 }

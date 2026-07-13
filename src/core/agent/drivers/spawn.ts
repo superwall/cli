@@ -1,9 +1,24 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { execFile } from "node:child_process";
+import { appendFileSync } from "node:fs";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+// Benchmark-only transcript sink: when SW_BENCH_TRANSCRIPT points at a file,
+// every raw agent stream-json line is appended there so the harness can capture
+// the full agent conversation (all phases) for the clickable dashboard. Unset in
+// normal use → zero effect.
+const TRANSCRIPT = process.env.SW_BENCH_TRANSCRIPT;
+function sink(line: string): void {
+  if (!TRANSCRIPT) return;
+  try {
+    appendFileSync(TRANSCRIPT, line + "\n");
+  } catch {
+    /* never let transcript I/O break a run */
+  }
+}
 
 export async function readVersion(bin: string): Promise<string | undefined> {
   try {
@@ -50,7 +65,10 @@ export function spawnStream(opts: SpawnStreamOptions): Promise<SpawnStreamResult
 
     const out = createInterface({ input: child.stdout });
     out.on("line", (line) => {
-      if (line.length) opts.onStdoutLine(line);
+      if (line.length) {
+        sink(line);
+        opts.onStdoutLine(line);
+      }
     });
 
     if (opts.onStderrLine && child.stderr) {

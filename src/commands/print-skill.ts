@@ -17,17 +17,37 @@ export function runPrintSkill(actionId: ActionId): (argv: Arguments) => Promise<
     const app = scan?.apps[0];
     const frameworkRef = app ? FRAMEWORK_REF[app.framework.integration] : undefined;
 
+    // `integrate --skill` is the FULL journey — SDK → placements → campaigns —
+    // so an agent following it does the complete setup (matching what the
+    // orchestrated command runs), not SDK-only.
+    if (actionId === "integrate") {
+      const parts = [
+        loadBundledSkill("superwall-integrate", frameworkRef),
+        loadBundledSkill("superwall-placements", ["strategy", frameworkRef]),
+        loadBundledSkill("superwall-dashboard"),
+      ].filter(Boolean);
+      if (!parts.length) {
+        process.stderr.write("No bundled skills found for integrate.\n");
+        process.exitCode = 1;
+        return;
+      }
+      process.stdout.write(
+        "# Set up Superwall — full integration\n\nDo all three phases in order:\n\n---\n\n" +
+          parts.join("\n\n---\n\n") +
+          "\n",
+      );
+      return;
+    }
+
     let skill: BundledSkillId;
     let reference: string | undefined;
+    let withStrategy = false;
     switch (actionId) {
-      case "integrate":
-        skill = "superwall-integrate";
-        reference = frameworkRef;
-        break;
       case "placements-review":
       case "placements-implement":
         skill = "superwall-placements";
         reference = frameworkRef;
+        withStrategy = true;
         break;
       case "dashboard-setup":
         skill = "superwall-dashboard";
@@ -40,7 +60,7 @@ export function runPrintSkill(actionId: ActionId): (argv: Arguments) => Promise<
       }
     }
 
-    const body = loadBundledSkill(skill, reference);
+    const body = loadBundledSkill(skill, withStrategy ? ["strategy", reference] : reference);
     if (!body) {
       process.stderr.write(`No bundled skill found for ${actionId}.\n`);
       process.exitCode = 1;

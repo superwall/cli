@@ -200,7 +200,13 @@ function secondaryId(label: string, id: unknown): string | undefined {
 async function doCreate(ctx: CommandContext, api: SuperwallApi, resource: ResourceName): Promise<void> {
   const { ui, json, dryRun, argv } = ctx;
   const value = argv.value as string | undefined;
-  if (!value) throw new Error(`Usage: superwall ${resource} create <${createArgLabel(resource)}>`);
+  if (!value) {
+    throw new Error(
+      resource === "campaigns"
+        ? 'Usage: superwall campaigns create "<description>" <placement>'
+        : `Usage: superwall ${resource} create <${createArgLabel(resource)}>`,
+    );
+  }
 
   if (resource === "apps") {
     const platform = argv.platform as string | undefined;
@@ -267,8 +273,11 @@ function createOne(api: SuperwallApi, resource: ResourceName, scope: Scope, valu
       return createEntitlement(api, scope, value);
     case "products":
       return createProduct(api, scope, value, productOptsFromArgv(argv));
-    case "campaigns":
-      return createCampaign(api, scope, value);
+    case "campaigns": {
+      const placement = argv.value2 as string | undefined;
+      if (!placement) throw new Error('Usage: superwall campaigns create "<description>" <placement>  (campaigns need at least one placement)');
+      return createCampaign(api, scope, value, placement);
+    }
     default:
       throw new Error(`create is not supported for ${resource} yet.`);
   }

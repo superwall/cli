@@ -42,7 +42,14 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     await runFallback(installDir);
     return;
   }
-  const driver = drivers[0]!.driver;
+  // `--driver claude|codex|superwall` forces a specific backend (bench/A-B); default = first detected.
+  const wanted = argv.driver as string | undefined;
+  const picked = wanted ? drivers.find((d) => d.driver.id === wanted) : drivers[0];
+  if (wanted && !picked) {
+    ui.error(`Driver "${wanted}" not available. Detected: ${drivers.map((d) => d.driver.id).join(", ") || "none"}.`);
+    return;
+  }
+  const driver = picked!.driver;
 
   const app = await pickApp(installDir);
   if (!app) return;
@@ -156,7 +163,11 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     spin.stop(ok ? "Superwall skills installed" : "Skill install skipped");
   }
 
-  if (!dryRun && !isNonInteractive() && !scope && (await ensureLogin())) {
+  // Dashboard stages run whenever we can resolve scope — interactively (after
+  // app-binding) OR headless/CI when a session + app key are already present, so
+  // `integrate` is fully non-interactive-capable (and benchable end-to-end).
+  const canResolveHeadless = isNonInteractive() && !!apiKey && !!loadSession();
+  if (!dryRun && !scope && (canResolveHeadless || (!isNonInteractive() && (await ensureLogin())))) {
     const resolved = scopePromise
       ? await scopePromise
       : await withSpinner("Finding this app in Superwall", () =>
@@ -445,6 +456,19 @@ async function runCampaignsAndPlacements(
     await runActionWithUI(driver, actionById["placements-implement"], {
       ...context,
       priorReport: loadReport(ctxAction.app.path, "placements-review"),
+    });
+  }
+
+  // A registered placement presents nothing until a campaign carries it — so the
+  // final step routes the app's placements into campaigns (the dashboard-setup
+  // agent creates them via the CLI, holdout-seeded). Without this, integrate
+  // leaves placements uncarried and no paywall could ever show.
+  const wire = await ui.confirm({ message: "Create campaigns so these placements can present paywalls?" });
+  if (wire) {
+    if (!(await ensureAgentReady())) return;
+    await runActionWithUI(driver, actionById["dashboard-setup"], {
+      ...context,
+      campaigns: campaignSummary(await listResource(api, "campaigns", scope).catch(() => campaigns)),
     });
   }
 }

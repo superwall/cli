@@ -101,7 +101,14 @@ export function run(): void {
     .command(
       ["integrate", "wizard"],
       "Set up Superwall in your app (SDK → placements → dashboard)",
-      (y) => y.options({ ...installDirOption, ...apiKeyOption, ...dryRunOption, ...skillOption }),
+      (y) =>
+        y.options({
+          ...installDirOption,
+          ...apiKeyOption,
+          ...dryRunOption,
+          ...skillOption,
+          driver: { type: "string", choices: ["claude", "codex", "superwall"], describe: "Force a coding-agent backend (default: first detected)", hidden: true },
+        }),
       (argv) => {
         if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("integrate")(argv));
         void import("@/commands/integrate").then((m) => m.runIntegrate(argv));
@@ -219,7 +226,7 @@ export function run(): void {
         y
           .positional("action", { type: "string", default: "list", describe: "list | create | placement | use | storekit" })
           .positional("value", { type: "string", describe: "identifier / description / campaign id" })
-          .positional("value2", { type: "string", describe: "placement name (campaigns placement)" })
+          .positional("value2", { type: "string", describe: "placement name (campaigns create / placement)" })
           .options({
             json: { type: "boolean", describe: "Output JSON" },
             project: { type: "string", describe: "Scope to a project id" },
