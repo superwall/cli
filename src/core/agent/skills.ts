@@ -54,7 +54,7 @@ export interface SkillInfo {
 export const KNOWN_SKILLS: SkillInfo[] = [
   {
     name: "superwall",
-    summary: "REST API (campaigns, paywalls, products, entitlements), analytics, docs, SDK triage, dashboard links",
+    summary: "Resources, ClickHouse SQL analytics, docs, SDK triage, and dashboard links",
   },
   { name: "superwall-editor", summary: "Build & edit live paywalls, onboarding, and web2app flows from the CLI" },
   { name: "wwdc", summary: "WWDC session lookup, comparison, and citation" },

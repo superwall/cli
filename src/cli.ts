@@ -57,6 +57,7 @@ function printHelp(): void {
       row("campaigns", "Campaigns (list · create · placement)"),
       row("paywalls", "Paywalls (list)"),
       row("orgs", "Organizations (list)"),
+      row("query [sql]", "Run SQL against your ClickHouse analytics data"),
       "",
       head("API commands"),
       row("get · post · patch · delete", "Raw requests to the Superwall API (/v2/…)"),
@@ -187,6 +188,22 @@ export function run(): void {
       (y) => y.options(installDirOption),
       (argv) => {
         void import("@/commands/doctor").then((m) => m.runDoctor(argv));
+      },
+    )
+    .command(
+      "query [sql]",
+      "Run SQL against your ClickHouse analytics data",
+      (y) =>
+        y
+          .positional("sql", { type: "string", describe: "SQL query (or pass it with --file / stdin)" })
+          .options({
+            file: { type: "string", describe: "Read SQL from a .sql file" },
+            json: { type: "boolean", describe: "Output ClickHouse's JSON response" },
+          })
+          .example('$0 query "SHOW TABLES FROM sw"', "Run an inline query")
+          .example("$0 query --file report.sql --json", "Run a saved query"),
+      (argv) => {
+        void import("@/commands/query").then((m) => m.runQuery(argv));
       },
     )
     .command(

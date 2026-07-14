@@ -61,6 +61,18 @@ The dashboard, in your terminal (`--json` on all; auto-scoped by project/app):
 | `superwall paywalls list` | Paywalls. |
 | `superwall asc keys <list \| set \| rm> …` | App Store Connect API key (for auto product import). |
 
+Data & analytics (direct SQL over your organization's ClickHouse data):
+
+| Command | Description |
+| --- | --- |
+| `superwall query "<sql>" [--json]` | Run an inline query; `--json` returns ClickHouse's native JSON envelope. |
+| `superwall query --file <query.sql> [--json]` | Run a saved query. SQL can also be piped on stdin. |
+
+This is the programmable analytics surface for ad hoc analysis, custom dashboards,
+scheduled reports (for example, a daily MRR update), and agent workflows. It uses
+the logged-in organization and its authenticated session; that credential must
+have `data:read` access.
+
 Raw API (Stripe-style, session-authenticated):
 
 | Command | Description |

@@ -75,6 +75,25 @@ export class SuperwallApi {
     return this.request<T>("DELETE", path);
   }
 
+  async postText(path: string, body: string): Promise<string> {
+    const { token, session } = await resolveAuthToken(this.session);
+    this.session = session;
+    const res = await fetch(`${this.base()}${path}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: "text/plain",
+        "content-type": "text/plain; charset=utf-8",
+      },
+      body,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new ApiError(`POST ${path} → HTTP ${res.status}`, res.status, text);
+    }
+    return res.text();
+  }
+
   // The API caps `limit` at 100.
   async list<T>(path: string): Promise<T[]> {
     const out: T[] = [];
