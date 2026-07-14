@@ -20,7 +20,15 @@ function fakeDriver(
   };
 }
 
-const options = { prompt: "test", cwd: "/tmp" };
+const options = {
+  prompt: "test",
+  cwd: "/tmp",
+  capabilities: {
+    filesystem: "read",
+    network: false,
+    shell: "read-only",
+  } as const,
+};
 
 test("falls back to the next driver after a usage limit", async () => {
   const calls: string[] = [];
@@ -38,7 +46,10 @@ test("falls back to the next driver after a usage limit", async () => {
 
 test("does not fall back after an unrelated driver failure", async () => {
   const calls: string[] = [];
-  const failure = { ok: false, finalText: "build failed" } satisfies AgentResult;
+  const failure = {
+    ok: false,
+    finalText: "build failed",
+  } satisfies AgentResult;
   const result = await runWithDriverFallback(
     [
       fakeDriver("claude", failure, calls),
@@ -52,8 +63,17 @@ test("does not fall back after an unrelated driver failure", async () => {
 });
 
 test("recognizes provider session and hosted credit limits", () => {
-  assert.equal(isUsageLimitText("You've hit your session limit · resets 5pm"), true);
-  assert.equal(isUsageLimitText("You've hit your usage limit. Try again tomorrow."), true);
-  assert.equal(isUsageLimitText("Your hosted Superwall Agent credit is exhausted."), true);
+  assert.equal(
+    isUsageLimitText("You've hit your session limit · resets 5pm"),
+    true,
+  );
+  assert.equal(
+    isUsageLimitText("You've hit your usage limit. Try again tomorrow."),
+    true,
+  );
+  assert.equal(
+    isUsageLimitText("Your hosted Superwall Agent credit is exhausted."),
+    true,
+  );
   assert.equal(isUsageLimitText("The migration failed to compile."), false);
 });

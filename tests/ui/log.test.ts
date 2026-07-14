@@ -10,7 +10,9 @@ test("plain markdown links retain both their label and target", () => {
 });
 
 test("terminal file links use an OSC hyperlink with a file URL and line fragment", () => {
-  const rendered = styleMarkdownLine("[App.swift:12](/tmp/App.swift:12)", { hyperlinks: true });
+  const rendered = styleMarkdownLine("[App.swift:12](/tmp/App.swift:12)", {
+    hyperlinks: true,
+  });
   assert.match(rendered, /file:\/\/\/tmp\/App\.swift#L12/);
   assert.doesNotMatch(rendered, /\]\(/);
 });

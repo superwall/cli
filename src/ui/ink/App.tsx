@@ -17,7 +17,11 @@ import {
 const PRIMARY = THEME.primary;
 const ALERT = THEME.alert;
 
-function symbolFor(kind: ItemKind): { char: string; color?: string; dim?: boolean } {
+function symbolFor(kind: ItemKind): {
+  char: string;
+  color?: string;
+  dim?: boolean;
+} {
   switch (kind) {
     case "intro":
       return { char: "◆", color: PRIMARY };
@@ -50,10 +54,26 @@ function Inline({ line }: { line: string }): React.ReactElement {
   let k = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(line))) {
-    if (m.index > last) nodes.push(<Text key={k++}>{line.slice(last, m.index)}</Text>);
-    if (m[1] != null) nodes.push(<Text key={k++} bold>{m[1]}</Text>);
-    else if (m[2] != null) nodes.push(<Text key={k++} color={PRIMARY}>{m[2]}</Text>);
-    else nodes.push(<Text key={k++} underline color={PRIMARY}>{m[3]}</Text>);
+    if (m.index > last)
+      nodes.push(<Text key={k++}>{line.slice(last, m.index)}</Text>);
+    if (m[1] != null)
+      nodes.push(
+        <Text key={k++} bold>
+          {m[1]}
+        </Text>,
+      );
+    else if (m[2] != null)
+      nodes.push(
+        <Text key={k++} color={PRIMARY}>
+          {m[2]}
+        </Text>,
+      );
+    else
+      nodes.push(
+        <Text key={k++} underline color={PRIMARY}>
+          {m[3]}
+        </Text>,
+      );
     last = re.lastIndex;
   }
   if (last < line.length) nodes.push(<Text key={k++}>{line.slice(last)}</Text>);
@@ -75,7 +95,13 @@ function ReportBlock({ text }: { text: string }): React.ReactElement {
   );
 }
 
-function NoteBlock({ title, text }: { title?: string; text: string }): React.ReactElement {
+function NoteBlock({
+  title,
+  text,
+}: {
+  title?: string;
+  text: string;
+}): React.ReactElement {
   const lines = text.split("\n");
   const gutterHeight = lines.length + 4;
   return (
@@ -83,7 +109,7 @@ function NoteBlock({ title, text }: { title?: string; text: string }): React.Rea
       {title ? (
         <Box>
           <Text color={PRIMARY}>◇</Text>
-          <Text>  {title}</Text>
+          <Text> {title}</Text>
         </Box>
       ) : null}
       <Box>
@@ -95,7 +121,13 @@ function NoteBlock({ title, text }: { title?: string; text: string }): React.Rea
           ))}
         </Box>
         <Text> </Text>
-        <Box borderStyle="round" borderColor="gray" paddingX={2} paddingY={1} flexDirection="column">
+        <Box
+          borderStyle="round"
+          borderColor="gray"
+          paddingX={2}
+          paddingY={1}
+          flexDirection="column"
+        >
           {lines.map((l, i) => (
             <Box key={i}>{l ? <Inline line={l} /> : <Text> </Text>}</Box>
           ))}
@@ -105,11 +137,17 @@ function NoteBlock({ title, text }: { title?: string; text: string }): React.Rea
   );
 }
 
-function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): React.ReactElement {
+function ListBlock({
+  items,
+  empty,
+}: {
+  items: ListItem[];
+  empty?: string;
+}): React.ReactElement {
   if (items.length === 0) {
     return (
       <Box>
-        <Text dimColor>│  </Text>
+        <Text dimColor>│ </Text>
         <Text dimColor>{empty ?? "None."}</Text>
       </Box>
     );
@@ -126,13 +164,15 @@ function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): Rea
               <Text color={PRIMARY}>●</Text>
               <Text>{"  "}</Text>
               <Text>{it.label}</Text>
-              {it.badge ? <Text dimColor>  {it.badge}</Text> : null}
-              {it.meta ? <Text dimColor>  {it.meta}</Text> : null}
+              {it.badge ? <Text dimColor> {it.badge}</Text> : null}
+              {it.meta ? <Text dimColor> {it.meta}</Text> : null}
             </Box>
             {children.map((c, j) => (
               <Box key={j}>
-                <Text dimColor>│  </Text>
-                <Text dimColor>{[c.badge, c.label, c.meta].filter(Boolean).join("  ")}</Text>
+                <Text dimColor>│ </Text>
+                <Text dimColor>
+                  {[c.badge, c.label, c.meta].filter(Boolean).join("  ")}
+                </Text>
               </Box>
             ))}
             {/* Connector omitted after the last row so the tree doesn't dangle. */}
@@ -150,8 +190,15 @@ function ListBlock({ items, empty }: { items: ListItem[]; empty?: string }): Rea
  * without an outro (stop() caps it with `└`). The outro itself attaches
  * directly to the previous row: no empty `│` tail before the cap.
  */
-function TimelineRow({ item, first }: { item: TimelineItem; first: boolean }): React.ReactElement {
-  const connector = !first && item.kind !== "outro" ? <Text dimColor>│</Text> : null;
+function TimelineRow({
+  item,
+  first,
+}: {
+  item: TimelineItem;
+  first: boolean;
+}): React.ReactElement {
+  const connector =
+    !first && item.kind !== "outro" ? <Text dimColor>│</Text> : null;
 
   if (item.kind === "report")
     return (
@@ -182,7 +229,9 @@ function TimelineRow({ item, first }: { item: TimelineItem; first: boolean }): R
         {connector}
         <Box>
           <Text color={PRIMARY}>◆ </Text>
-          <Text color={PRIMARY} bold>{firstWord}</Text>
+          <Text color={PRIMARY} bold>
+            {firstWord}
+          </Text>
           {rest.length ? <Text dimColor> {rest.join(" ")}</Text> : null}
         </Box>
       </Box>
@@ -200,14 +249,14 @@ function TimelineRow({ item, first }: { item: TimelineItem; first: boolean }): R
         </Text>
         {item.text ? (
           <>
-            <Text>  </Text>
+            <Text> </Text>
             <Inline line={lines[0] ?? ""} />
           </>
         ) : null}
       </Box>
       {lines.slice(1).map((l, i) => (
         <Box key={i}>
-          <Text dimColor>│  </Text>
+          <Text dimColor>│ </Text>
           <Text dimColor>{l}</Text>
         </Box>
       ))}
@@ -226,12 +275,16 @@ function SpinnerView({ message }: { message: string }): React.ReactElement {
       <Text color={PRIMARY}>
         <Spinner type="dots" />
       </Text>
-      <Text>  {message}</Text>
+      <Text> {message}</Text>
     </Box>
   );
 }
 
-function SelectView({ active }: { active: Extract<Active, { type: "select" }> }): React.ReactElement {
+function SelectView({
+  active,
+}: {
+  active: Extract<Active, { type: "select" }>;
+}): React.ReactElement {
   const n = active.options.length;
   const nextEnabled = (from: number, dir: 1 | -1): number => {
     for (let step = 1; step <= n; step++) {
@@ -241,8 +294,10 @@ function SelectView({ active }: { active: Extract<Active, { type: "select" }> })
     return from;
   };
   useInput((input, key) => {
-    if (key.upArrow || input === "k") updateActive({ index: nextEnabled(active.index, -1) });
-    else if (key.downArrow || input === "j") updateActive({ index: nextEnabled(active.index, 1) });
+    if (key.upArrow || input === "k")
+      updateActive({ index: nextEnabled(active.index, -1) });
+    else if (key.downArrow || input === "j")
+      updateActive({ index: nextEnabled(active.index, 1) });
     else if (key.return) {
       const opt = active.options[active.index]!;
       if (opt.disabled) return;
@@ -261,7 +316,7 @@ function SelectView({ active }: { active: Extract<Active, { type: "select" }> })
     <Box flexDirection="column">
       <Box>
         <Text color={PRIMARY}>◇</Text>
-        <Text>  </Text>
+        <Text> </Text>
         <Inline line={active.message} />
       </Box>
       {active.options.map((o, i) => {
@@ -269,8 +324,11 @@ function SelectView({ active }: { active: Extract<Active, { type: "select" }> })
         return (
           <Box key={i}>
             <Text dimColor>│ </Text>
-            <Text color={sel ? PRIMARY : undefined} dimColor={o.disabled}> {sel ? "●" : "○"} {o.label}</Text>
-            {o.hint ? <Text dimColor>  {o.hint}</Text> : null}
+            <Text color={sel ? PRIMARY : undefined} dimColor={o.disabled}>
+              {" "}
+              {sel ? "●" : "○"} {o.label}
+            </Text>
+            {o.hint ? <Text dimColor> {o.hint}</Text> : null}
           </Box>
         );
       })}
@@ -284,12 +342,16 @@ function Footer({ text }: { text?: string }): React.ReactElement | null {
   return (
     <Box>
       <Text dimColor>│ </Text>
-      <Text dimColor>  {text}</Text>
+      <Text dimColor> {text}</Text>
     </Box>
   );
 }
 
-function MultiSelectView({ active }: { active: Extract<Active, { type: "multiselect" }> }): React.ReactElement {
+function MultiSelectView({
+  active,
+}: {
+  active: Extract<Active, { type: "multiselect" }>;
+}): React.ReactElement {
   const n = active.options.length;
   useInput((input, key) => {
     if (key.upArrow) updateActive({ index: (active.index - 1 + n) % n });
@@ -314,7 +376,7 @@ function MultiSelectView({ active }: { active: Extract<Active, { type: "multisel
     <Box flexDirection="column">
       <Box>
         <Text color={PRIMARY}>◇</Text>
-        <Text>  </Text>
+        <Text> </Text>
         <Inline line={active.message} />
       </Box>
       {active.options.map((o, i) => {
@@ -327,7 +389,7 @@ function MultiSelectView({ active }: { active: Extract<Active, { type: "multisel
             <Text color={on ? PRIMARY : undefined} bold={cur}>
               {on ? "◼" : "◻"} {o.label}
             </Text>
-            {o.hint ? <Text dimColor>  {o.hint}</Text> : null}
+            {o.hint ? <Text dimColor> {o.hint}</Text> : null}
           </Box>
         );
       })}
@@ -335,10 +397,16 @@ function MultiSelectView({ active }: { active: Extract<Active, { type: "multisel
   );
 }
 
-function ConfirmView({ active }: { active: Extract<Active, { type: "confirm" }> }): React.ReactElement {
+function ConfirmView({
+  active,
+}: {
+  active: Extract<Active, { type: "confirm" }>;
+}): React.ReactElement {
   useInput((input, key) => {
     if (key.leftArrow || key.rightArrow || input === "y" || input === "n") {
-      updateActive({ value: input === "y" ? true : input === "n" ? false : !active.value });
+      updateActive({
+        value: input === "y" ? true : input === "n" ? false : !active.value,
+      });
     } else if (key.return) {
       const resolve = active.resolve;
       finish(active.message, active.value ? "Yes" : "No");
@@ -353,20 +421,29 @@ function ConfirmView({ active }: { active: Extract<Active, { type: "confirm" }> 
     <Box flexDirection="column">
       <Box>
         <Text color={PRIMARY}>◇</Text>
-        <Text>  </Text>
+        <Text> </Text>
         <Inline line={active.message} />
       </Box>
       <Box>
         <Text dimColor>│ </Text>
-        <Text color={active.value ? PRIMARY : undefined}> {active.value ? "●" : "○"} Yes</Text>
-        <Text>   </Text>
-        <Text color={!active.value ? PRIMARY : undefined}>{!active.value ? "●" : "○"} No</Text>
+        <Text color={active.value ? PRIMARY : undefined}>
+          {" "}
+          {active.value ? "●" : "○"} Yes
+        </Text>
+        <Text> </Text>
+        <Text color={!active.value ? PRIMARY : undefined}>
+          {!active.value ? "●" : "○"} No
+        </Text>
       </Box>
     </Box>
   );
 }
 
-function TextView({ active }: { active: Extract<Active, { type: "text" }> }): React.ReactElement {
+function TextView({
+  active,
+}: {
+  active: Extract<Active, { type: "text" }>;
+}): React.ReactElement {
   useInput((input, key) => {
     if (key.return) {
       const v = active.value.trim();
@@ -396,7 +473,7 @@ function TextView({ active }: { active: Extract<Active, { type: "text" }> }): Re
     <Box flexDirection="column">
       <Box>
         <Text color={PRIMARY}>◇</Text>
-        <Text>  </Text>
+        <Text> </Text>
         <Inline line={active.message} />
       </Box>
       <Box>
@@ -425,7 +502,11 @@ function TextView({ active }: { active: Extract<Active, { type: "text" }> }): Re
   );
 }
 
-function ActiveRegion({ active }: { active: NonNullable<Active> }): React.ReactElement | null {
+function ActiveRegion({
+  active,
+}: {
+  active: NonNullable<Active>;
+}): React.ReactElement | null {
   switch (active.type) {
     case "spinner":
       return <SpinnerView message={active.message} />;
@@ -445,7 +526,9 @@ export function App(): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Static items={s.items}>
-        {(item, index) => <TimelineRow key={item.id} item={item} first={index === 0} />}
+        {(item, index) => (
+          <TimelineRow key={item.id} item={item} first={index === 0} />
+        )}
       </Static>
       {s.active ? (
         <Box flexDirection="column">

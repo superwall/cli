@@ -2,6 +2,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import pc from "picocolors";
 import { ENV_API_KEY, VERSION } from "@/constants";
+import { writeJson } from "@/output";
 
 const installDirOption = {
   "install-dir": {
@@ -18,17 +19,29 @@ const apiKeyOption = {
 };
 
 const dryRunOption = {
-  "dry-run": { type: "boolean" as const, describe: "Plan without changing anything", hidden: true },
+  "dry-run": {
+    type: "boolean" as const,
+    describe: "Plan without changing anything",
+    hidden: true,
+  },
 };
 
 const skillOption = {
   skill: {
     type: "boolean" as const,
-    describe: "Print the agent playbook (skill + this project's reference) instead of running",
+    describe:
+      "Print the agent playbook (skill + this project's reference) instead of running",
   },
 };
 
-const RESOURCES = ["orgs", "apps", "products", "campaigns", "paywalls", "entitlements"] as const;
+const RESOURCES = [
+  "orgs",
+  "apps",
+  "products",
+  "campaigns",
+  "paywalls",
+  "entitlements",
+] as const;
 
 const API_VERBS = ["get", "post", "patch", "delete"] as const;
 
@@ -46,11 +59,19 @@ function printHelp(): void {
       head("Workflow commands"),
       row("integrate", "Set up Superwall in your app (agent-driven)"),
       row("migrate", "Migrate from RevenueCat / Adapty / Qonversion"),
-      row("review [--fix]", "Audit an existing Superwall setup; --fix repairs issues"),
-      pc.dim("                                  Each takes --skill to print the playbook instead of running."),
+      row(
+        "review [--fix]",
+        "Audit an existing Superwall setup; --fix repairs issues",
+      ),
+      pc.dim(
+        "                                  Each takes --skill to print the playbook instead of running.",
+      ),
       "",
       head("Resource commands"),
-      row("bootstrap", "Complete account tree: projects, apps, campaigns, products, …"),
+      row(
+        "bootstrap",
+        "Complete account tree: projects, apps, campaigns, products, …",
+      ),
       row("apps", "Projects & their platform apps (list · create · use)"),
       row("products", "Products (list · create · storekit)"),
       row("entitlements", "Entitlements (list · create)"),
@@ -60,7 +81,10 @@ function printHelp(): void {
       row("query [sql]", "Run SQL against your ClickHouse analytics data"),
       "",
       head("API commands"),
-      row("get · post · patch · delete", "Raw requests to the Superwall API (/v2/…)"),
+      row(
+        "get · post · patch · delete",
+        "Raw requests to the Superwall API (/v2/…)",
+      ),
       "",
       head("App Store Connect commands"),
       row("asc", "The ASC API via Superwall's signed proxy (no .p8 / JWT)"),
@@ -73,7 +97,8 @@ function printHelp(): void {
       "",
       pc.bold("Flags:"),
       row("--json", "Machine-readable output"),
-      row("--no-ui", "Plain output (for agents / CI)"),
+      row("--no-ui", "Minimal undecorated text; disables prompts"),
+      row("--no-interactive", "Disable prompts for automation"),
       row("-v, --version", "Print the CLI version"),
       row("-h, --help", "Help for superwall"),
       "",
@@ -83,9 +108,13 @@ function printHelp(): void {
   );
 }
 
-export function run(): void {
+export async function run(): Promise<void> {
   const args = hideBin(process.argv);
-  if (args.length === 0 || args[0] === "help" || ((args[0] === "-h" || args[0] === "--help") && args.length === 1)) {
+  if (
+    args.length === 0 ||
+    args[0] === "help" ||
+    ((args[0] === "-h" || args[0] === "--help") && args.length === 1)
+  ) {
     printHelp();
     return;
   }
@@ -97,10 +126,21 @@ export function run(): void {
       type: "boolean",
       default: true,
       hidden: true,
-      describe: "Rich interactive UI (use --no-ui for plain, agent-friendly output)",
+      describe: "Rich interactive UI (use --no-ui for minimal text)",
+    })
+    .option("interactive", {
+      type: "boolean",
+      default: true,
+      hidden: true,
+      describe: "Allow prompts (use --no-interactive for automation)",
+    })
+    .option("json", {
+      type: "boolean",
+      default: false,
+      describe: "Machine-readable output",
     })
     .command(
-      ["integrate", "wizard"],
+      "integrate",
       "Set up Superwall in your app (SDK → placements → dashboard)",
       (y) =>
         y.options({
@@ -108,11 +148,19 @@ export function run(): void {
           ...apiKeyOption,
           ...dryRunOption,
           ...skillOption,
-          driver: { type: "string", choices: ["claude", "codex", "superwall"], describe: "Force a coding-agent backend (default: first detected)", hidden: true },
+          driver: {
+            type: "string",
+            choices: ["claude", "codex", "superwall"],
+            describe: "Force a coding-agent backend (default: first detected)",
+            hidden: true,
+          },
         }),
       (argv) => {
-        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("integrate")(argv));
-        void import("@/commands/integrate").then((m) => m.runIntegrate(argv));
+        if (argv.skill)
+          return import("@/commands/print-skill").then((m) =>
+            m.runPrintSkill("integrate")(argv),
+          );
+        return import("@/commands/integrate").then((m) => m.runIntegrate(argv));
       },
     )
     .command(
@@ -123,22 +171,37 @@ export function run(): void {
           ...installDirOption,
           ...dryRunOption,
           ...skillOption,
-          fix: { type: "boolean", describe: "Apply verified, safe fixes from the latest review" },
+          fix: {
+            type: "boolean",
+            describe: "Apply verified, safe fixes from the latest review",
+          },
         }),
       (argv) => {
         const id = argv.fix ? "review-fix" : "review";
-        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill(id)(argv));
-        void import("@/commands/integrate").then((m) => m.runActionCommand(id)(argv));
+        if (argv.skill)
+          return import("@/commands/print-skill").then((m) =>
+            m.runPrintSkill(id)(argv),
+          );
+        return import("@/commands/integrate").then((m) =>
+          m.runActionCommand(id)(argv),
+        );
       },
     )
     .command(
       "migrate",
       "Migrate from RevenueCat / Adapty / Qonversion to Superwall",
       (y) =>
-        y.options({ ...installDirOption, "dry-run": { type: "boolean", describe: "Plan without changes" }, ...skillOption }),
+        y.options({
+          ...installDirOption,
+          "dry-run": { type: "boolean", describe: "Plan without changes" },
+          ...skillOption,
+        }),
       (argv) => {
-        if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill("migrate")(argv));
-        void import("@/commands/migrate").then((m) => m.runMigrate(argv));
+        if (argv.skill)
+          return import("@/commands/print-skill").then((m) =>
+            m.runPrintSkill("migrate")(argv),
+          );
+        return import("@/commands/migrate").then((m) => m.runMigrate(argv));
       },
     )
     .command(
@@ -146,12 +209,24 @@ export function run(): void {
       "Log in to Superwall (opens your browser)",
       (y) =>
         y.options({
-          "api-key": { type: "string", describe: "Log in headlessly with an API key (for CI) instead of the browser" },
-          host: { type: "string", describe: "OAuth issuer override", hidden: true },
-          "client-id": { type: "string", describe: "OAuth client id override", hidden: true },
+          "api-key": {
+            type: "string",
+            describe:
+              "Log in headlessly with an API key (for CI) instead of the browser",
+          },
+          host: {
+            type: "string",
+            describe: "OAuth issuer override",
+            hidden: true,
+          },
+          "client-id": {
+            type: "string",
+            describe: "OAuth client id override",
+            hidden: true,
+          },
         }),
       (argv) => {
-        void import("@/commands/auth").then((m) => m.runLogin(argv));
+        return import("@/commands/auth").then((m) => m.runLogin(argv));
       },
     )
     .command(
@@ -159,7 +234,7 @@ export function run(): void {
       "Log out of Superwall",
       (y) => y,
       (argv) => {
-        void import("@/commands/auth").then((m) => m.runLogout(argv));
+        return import("@/commands/auth").then((m) => m.runLogout(argv));
       },
     )
     .command(
@@ -167,7 +242,7 @@ export function run(): void {
       "Show the logged-in Superwall account",
       (y) => y,
       (argv) => {
-        void import("@/commands/auth").then((m) => m.runWhoami(argv));
+        return import("@/commands/auth").then((m) => m.runWhoami(argv));
       },
     )
     .command(
@@ -175,19 +250,29 @@ export function run(): void {
       "Install the Superwall agent toolkit (skills) for your coding agent",
       (y) =>
         y.options({
-          skill: { type: "array", describe: "Install specific skills by name (default: all)" },
-          "dry-run": { type: "boolean", describe: "Print the install command without running it", hidden: true },
+          skill: {
+            type: "array",
+            describe: "Install specific skills by name (default: all)",
+          },
+          "dry-run": {
+            type: "boolean",
+            describe: "Print the install command without running it",
+            hidden: true,
+          },
         }),
       (argv) => {
-        void import("@/commands/skills").then((m) => m.runSkills(argv));
+        return import("@/commands/skills").then((m) => m.runSkills(argv));
       },
     )
     .command(
       "doctor",
       "Check the health of your Superwall integration",
-      (y) => y.options(installDirOption),
+      (y) =>
+        y.options({
+          ...installDirOption,
+        }),
       (argv) => {
-        void import("@/commands/doctor").then((m) => m.runDoctor(argv));
+        return import("@/commands/doctor").then((m) => m.runDoctor(argv));
       },
     )
     .command(
@@ -195,38 +280,60 @@ export function run(): void {
       "Run SQL against your ClickHouse analytics data",
       (y) =>
         y
-          .positional("sql", { type: "string", describe: "SQL query (or pass it with --file / stdin)" })
+          .positional("sql", {
+            type: "string",
+            describe: "SQL query (or pass it with --file / stdin)",
+          })
           .options({
             file: { type: "string", describe: "Read SQL from a .sql file" },
-            json: { type: "boolean", describe: "Output ClickHouse's JSON response" },
           })
           .example('$0 query "SHOW TABLES FROM sw"', "Run an inline query")
           .example("$0 query --file report.sql --json", "Run a saved query"),
       (argv) => {
-        void import("@/commands/query").then((m) => m.runQuery(argv));
+        return import("@/commands/query").then((m) => m.runQuery(argv));
       },
     )
     .command(
-      ["asc <target> [value] [value2]", "app-store-connect <target> [value] [value2]"],
+      "asc <target> [value] [value2]",
       "Call the App Store Connect API through Superwall's signed proxy (no .p8 / JWT needed)",
       (y) =>
         y
-          .positional("target", { type: "string", describe: "get|post|patch|delete, a raw path (/v1/…), or: apps | products | subscriptions | iaps | keys" })
-          .positional("value", { type: "string", describe: "Path (for a verb), app bundle id / ASC app id (shortcuts), or list|set|rm (keys)" })
-          .positional("value2", { type: "string", describe: "Team id (keys rm)" })
+          .positional("target", {
+            type: "string",
+            describe:
+              "get|post|patch|delete, a raw path (/v1/…), or: apps | products | subscriptions | iaps | keys",
+          })
+          .positional("value", {
+            type: "string",
+            describe:
+              "Path (for a verb), app bundle id / ASC app id (shortcuts), or list|set|rm (keys)",
+          })
+          .positional("value2", {
+            type: "string",
+            describe: "Team id (keys rm)",
+          })
           .options({
-            d: { type: "array", describe: "Request param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]" },
-            team: { type: "string", describe: "ASC team id (if the org has more than one connected)" },
-            json: { type: "boolean", describe: "Output JSON" },
+            d: {
+              type: "array",
+              describe:
+                "Request param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]",
+            },
+            team: {
+              type: "string",
+              describe: "ASC team id (if the org has more than one connected)",
+            },
             // asc secrets set
             "key-id": { type: "string", describe: "ASC key id (keys set)" },
             issuer: { type: "string", describe: "ASC issuer id (keys set)" },
-            "key-file": { type: "string", describe: "Path to the .p8 key file (keys set)" },
+            "key-file": {
+              type: "string",
+              describe: "Path to the .p8 key file (keys set)",
+            },
             name: { type: "string", describe: "Account name (keys set)" },
             "dry-run": { type: "boolean", hidden: true },
           }),
       (argv) => {
-        void import("@/commands/asc").then((m) => m.runAsc(argv));
+        return import("@/commands/asc").then((m) => m.runAsc(argv));
       },
     );
 
@@ -241,28 +348,70 @@ export function run(): void {
       RESOURCE_HELP[resource] ?? `Manage Superwall ${resource} (list · create)`,
       (y) =>
         y
-          .positional("action", { type: "string", default: "list", describe: "list | create | placement | use | storekit" })
-          .positional("value", { type: "string", describe: "identifier / description / campaign id" })
-          .positional("value2", { type: "string", describe: "placement name (campaigns create / placement)" })
+          .positional("action", {
+            type: "string",
+            default: "list",
+            describe: "list | create | placement | use | storekit",
+          })
+          .positional("value", {
+            type: "string",
+            describe: "identifier / description / campaign id",
+          })
+          .positional("value2", {
+            type: "string",
+            describe: "placement name (campaigns create / placement)",
+          })
           .options({
-            json: { type: "boolean", describe: "Output JSON" },
             project: { type: "string", describe: "Scope to a project id" },
             app: { type: "string", describe: "Scope to an application id" },
-            name: { type: "string", describe: "Display name (products create)" },
-            platform: { type: "string", describe: "ios | android | flutter | react_native | web (apps create)" },
-            bundle: { type: "string", describe: "Bundle id / package name (apps create)" },
-            out: { type: "string", describe: "Output file (products storekit)" },
+            name: {
+              type: "string",
+              describe: "Display name (products create)",
+            },
+            platform: {
+              type: "string",
+              describe:
+                "ios | android | flutter | react_native | web (apps create)",
+            },
+            bundle: {
+              type: "string",
+              describe: "Bundle id / package name (apps create)",
+            },
+            out: {
+              type: "string",
+              describe: "Output file (products storekit)",
+            },
             // products create — full product definition (mainly for agents)
-            price: { type: "number", describe: "Price in major units, e.g. 9.99 (products create)" },
-            currency: { type: "string", describe: "ISO currency, default USD (products create)" },
-            period: { choices: ["day", "week", "month", "year"] as const, describe: "Subscription billing period (products create)" },
-            "period-count": { type: "number", describe: "Periods per cycle, default 1 (products create)" },
-            "trial-days": { type: "number", describe: "Free-trial length in days (products create)" },
-            entitlement: { type: "array", describe: "Entitlement id(s) to grant (products create)" },
+            price: {
+              type: "number",
+              describe: "Price in major units, e.g. 9.99 (products create)",
+            },
+            currency: {
+              type: "string",
+              describe: "ISO currency, default USD (products create)",
+            },
+            period: {
+              choices: ["day", "week", "month", "year"] as const,
+              describe: "Subscription billing period (products create)",
+            },
+            "period-count": {
+              type: "number",
+              describe: "Periods per cycle, default 1 (products create)",
+            },
+            "trial-days": {
+              type: "number",
+              describe: "Free-trial length in days (products create)",
+            },
+            entitlement: {
+              type: "array",
+              describe: "Entitlement id(s) to grant (products create)",
+            },
             "dry-run": { type: "boolean", describe: "Plan without writing" },
           }),
       (argv) => {
-        void import("@/commands/resource").then((m) => m.runResource(resource)(argv));
+        return import("@/commands/resource").then((m) =>
+          m.runResource(resource)(argv),
+        );
       },
     );
   }
@@ -270,9 +419,9 @@ export function run(): void {
   cli = cli.command(
     "bootstrap",
     "Complete account tree: orgs, projects, apps, campaigns, placements, products, …",
-    (y) => y.options({ json: { type: "boolean", describe: "Output JSON" } }),
+    (y) => y,
     (argv) => {
-      void import("@/commands/api").then((m) => m.runBootstrap(argv));
+      return import("@/commands/api").then((m) => m.runBootstrap(argv));
     },
   );
 
@@ -282,18 +431,24 @@ export function run(): void {
       `Make ${verb.toUpperCase()} requests to the Superwall API`,
       (y) =>
         y
-          .positional("path", { type: "string", describe: "API path, e.g. /v2/products" })
+          .positional("path", {
+            type: "string",
+            describe: "API path, e.g. /v2/products",
+          })
           .options({
-            d: { type: "array", describe: "Param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]" },
-            json: { type: "boolean", describe: "Output JSON" },
+            d: {
+              type: "array",
+              describe:
+                "Param, Stripe-style: -d key=value (string) or key:=value (number/bool/json); nesting via key[sub]",
+            },
           }),
       (argv) => {
-        void import("@/commands/api").then((m) => m.runApi(verb)(argv));
+        return import("@/commands/api").then((m) => m.runApi(verb)(argv));
       },
     );
   }
 
-  void cli
+  await cli
     .command("$0", false, (y) => y, printHelp)
     .version(VERSION)
     .alias("v", "version")
@@ -305,10 +460,21 @@ export function run(): void {
       if (err) throw err;
       const friendly = msg
         .replace(/^Unknown arguments?:/, "Unknown command:")
-        .replace(/^Not enough non-option arguments.*$/, "Missing a required argument.");
-      process.stderr.write(`${pc.red("✗")} ${friendly}\n\nRun ${pc.bold("superwall --help")} for usage.\n`);
+        .replace(
+          /^Not enough non-option arguments.*$/,
+          "Missing a required argument.",
+        );
+      if (args.includes("--json")) {
+        writeJson(process.stdout, {
+          error: { code: "invalid_arguments", message: friendly },
+        });
+      } else {
+        process.stderr.write(
+          `${pc.red("✗")} ${friendly}\n\nRun ${pc.bold("superwall --help")} for usage.\n`,
+        );
+      }
       process.exit(1);
     })
     .strict()
-    .parse();
+    .parseAsync();
 }

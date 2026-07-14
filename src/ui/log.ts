@@ -25,12 +25,19 @@ export function stripReport(raw: string): string {
 }
 
 export function styleMarkdown(text: string): string {
-  return text.split("\n").map((line) => styleMarkdownLine(line)).join("\n");
+  return text
+    .split("\n")
+    .map((line) => styleMarkdownLine(line))
+    .join("\n");
 }
 
-export function styleMarkdownLine(line: string, opts: { hyperlinks?: boolean } = {}): string {
+export function styleMarkdownLine(
+  line: string,
+  opts: { hyperlinks?: boolean } = {},
+): string {
   const header = line.match(/^\s*(#{1,6})\s+(.*)$/);
-  if (header) return brand(bold(styleInline(header[2]!, opts.hyperlinks ?? false)));
+  if (header)
+    return brand(bold(styleInline(header[2]!, opts.hyperlinks ?? false)));
   return styleInline(line, opts.hyperlinks ?? false);
 }
 
@@ -39,15 +46,23 @@ export function wrapReportLine(line: string, columns: number): string[] {
   const prefix = bullet?.[1] ?? "";
   const content = prefix ? line.slice(prefix.length) : line;
   const width = Math.max(12, columns - prefix.length);
-  const wrapped = wrapAnsi(styleMarkdownLine(content, { hyperlinks: true }), width, {
-    hard: true,
-    trim: false,
-  }).split("\n");
-  return wrapped.map((part, index) => `${index === 0 ? prefix : " ".repeat(prefix.length)}${part}`);
+  const wrapped = wrapAnsi(
+    styleMarkdownLine(content, { hyperlinks: true }),
+    width,
+    {
+      hard: true,
+      trim: false,
+    },
+  ).split("\n");
+  return wrapped.map(
+    (part, index) =>
+      `${index === 0 ? prefix : " ".repeat(prefix.length)}${part}`,
+  );
 }
 
 function styleInline(line: string, hyperlinks: boolean): string {
-  const re = /\[([^\]]+)]\(([^)]+)\)|\*\*(.+?)\*\*|`([^`]+)`|(https?:\/\/[^\s]+)/g;
+  const re =
+    /\[([^\]]+)]\(([^)]+)\)|\*\*(.+?)\*\*|`([^`]+)`|(https?:\/\/[^\s]+)/g;
   let out = "";
   let last = 0;
   let match: RegExpExecArray | null;

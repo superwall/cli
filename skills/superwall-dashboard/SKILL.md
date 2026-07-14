@@ -8,7 +8,7 @@ description: Set up an app's Superwall dashboard state so its placements actuall
 Turn an app whose code registers placements into a working dashboard: entitlement(s),
 products, and campaigns that route each placement to a paywall. Use the globally
 installed, already-authenticated `superwall` CLI for every change. Pass `--json` on
-every command. Run `superwall whoami` first; if not logged in, tell the user to run
+every command. Run `superwall whoami --json` first; if not logged in, tell the user to run
 `superwall login`.
 
 ## The model (teach this, then act)
@@ -33,19 +33,19 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
 
 1. **Find the app.** `superwall apps list --json`. Match the app by its `public_api_key`
    (the `pk_…` in the app's `configure()` call). Note its `id` → pass `--app <id>` to
-   campaign/paywall commands, `--project <id>` to product/entitlement commands. One project =
-   one app per platform, so defaults usually resolve; be explicit in monorepos.
+   campaign/paywall commands, `--project <id>` to product/entitlement commands. Always pass
+   these ids; JSON mode never guesses when multiple scopes exist.
 2. **Find registered placements.** Grep the app for `register(`, `registerPlacement(`,
    `usePlacement(`, `Superwall.shared.register` — collect the exact event-name strings.
-3. **Ensure an entitlement.** `superwall entitlements list --json`; reuse an existing one, else
-   `superwall entitlements create pro --json`. Default to a single `pro` entitlement unless the
+3. **Ensure an entitlement.** `superwall entitlements list --project <id> --json`; reuse an existing one, else
+   `superwall entitlements create pro --project <id> --json`. Default to a single `pro` entitlement unless the
    app clearly has tiers.
-4. **Ensure products.** `superwall products list --json` first. If none:
-   - App Store Connect connected (`superwall asc keys list`) → import (see references/setup.md).
+4. **Ensure products.** `superwall products list --project <id> --json` first. If none:
+   - App Store Connect connected (`superwall asc keys list --json`) → import (see references/setup.md).
    - Otherwise create with real pricing:
-     `superwall products create pro_yearly --price 39.99 --period year --trial-days 7 --entitlement pro --json`
-5. **Carry each placement.** `superwall campaigns list --json`. For each placement not already on
-   a campaign: `superwall campaigns create "<description>" <placement> --app <id> --json` (campaigns require an initial placement; it seeds a 100% holdout audience), or add more with    `superwall campaigns placement <campaignId> <placement> --app <id> --json`.
+     `superwall products create pro_yearly --price 39.99 --period year --trial-days 7 --entitlement pro --project <id> --json`
+5. **Carry each placement.** `superwall campaigns list --project <id> --app <id> --json`. For each placement not already on
+   a campaign: `superwall campaigns create "<description>" <placement> --project <id> --app <id> --json` (campaigns require an initial placement; it seeds a 100% holdout audience), or add more with `superwall campaigns placement <campaignId> <placement> --project <id> --app <id> --json`.
 
 ## Guardrails
 

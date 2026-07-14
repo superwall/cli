@@ -122,7 +122,7 @@ function AddProjectButton({ count, freeLimit }: { count: number; freeLimit: numb
 - Names are stable and match presenting campaigns exactly; preserve intentional
   analytics taxonomies and never rename for style alone.
 - Cross-check placements expected to present now with `superwall campaigns list
-  --json`; analytics-only, future, and paused placements may be unrouted.
+  --project <id> --app <id> --json`; analytics-only, future, and paused placements may be unrouted.
 - `usePlacement` is only called inside components under `SuperwallProvider`.
 - Obvious premium boundaries (upgrade buttons, gated actions, quota limits,
   onboarding end) with no placement.
@@ -130,9 +130,9 @@ function AddProjectButton({ count, freeLimit }: { count: number; freeLimit: numb
 ## Dashboard routing
 
 ```bash
-superwall campaigns list --json
-superwall campaigns create "Editor upgrade paywall"
-superwall campaigns placement <campaignId> unlock_export
+superwall campaigns list --project <id> --app <id> --json
+superwall campaigns create "Editor upgrade paywall" unlock_export --project <id> --app <id> --json
+superwall campaigns placement <campaignId> another_placement --project <id> --app <id> --json
 ```
 
 ## Pitfalls

@@ -1,15 +1,40 @@
-import { isNonInteractive } from "@/util/env";
+import type { OutputMode } from "@/output";
 import { inkRenderer } from "./ink/runtime";
 import { plainRenderer } from "./plain/renderer";
 import type { Renderer } from "./types";
 
 let active: Renderer = plainRenderer;
 
-export function selectRenderer(opts?: { plain?: boolean }): Renderer {
-  const plain = opts?.plain ?? isNonInteractive();
-  active = plain ? plainRenderer : inkRenderer;
+export function selectRenderer(opts: { mode: OutputMode }): Renderer {
+  const { mode } = opts;
+  active =
+    mode === "rich"
+      ? inkRenderer
+      : mode === "json"
+        ? silentRenderer
+        : plainRenderer;
   return active;
 }
+
+const silentRenderer: Renderer = {
+  start: () => {},
+  stop: () => {},
+  intro: () => {},
+  step: () => {},
+  info: () => {},
+  success: () => {},
+  warn: () => {},
+  error: () => {},
+  note: () => {},
+  report: () => {},
+  list: () => {},
+  outro: () => {},
+  spinner: () => ({ start: () => {}, message: () => {}, stop: () => {} }),
+  select: async () => null,
+  multiselect: async () => null,
+  confirm: async () => null,
+  text: async () => null,
+};
 
 export const ui: Renderer = {
   start: () => active.start(),
@@ -31,4 +56,13 @@ export const ui: Renderer = {
   text: (o) => active.text(o),
 };
 
-export type { Renderer, Opt, SelectOpts, MultiSelectOpts, TextOpts, Spinner, ListItem, ListOpts } from "./types";
+export type {
+  Renderer,
+  Opt,
+  SelectOpts,
+  MultiSelectOpts,
+  TextOpts,
+  Spinner,
+  ListItem,
+  ListOpts,
+} from "./types";

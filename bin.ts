@@ -11,4 +11,4 @@ if (Number.isFinite(major) && major < NODE_MIN) {
   process.exit(1);
 }
 
-run();
+await run();

@@ -50,10 +50,12 @@ separates optional opportunities from required fixes.
 
 ## Authenticated cross-checks
 
-Use `superwall whoami`, then `superwall bootstrap --json`, `superwall products
-list --json`, `superwall entitlements list --json`, `superwall campaigns list
---json`, and `superwall paywalls list --json`. When App Store Connect is linked,
-use `superwall asc subscriptions <bundle-id>` to compare store identifiers.
+Use `superwall whoami --json`, then `superwall bootstrap --json`. Derive the exact
+project/app ids and pass them to `superwall products list --project <id> --json`,
+`superwall entitlements list --project <id> --json`, `superwall campaigns list
+--project <id> --app <id> --json`, and `superwall paywalls list --project <id>
+--app <id> --json`. When App Store Connect is linked,
+use `superwall asc subscriptions <bundle-id> --json` to compare store identifiers.
 
 ## Framework reference
 

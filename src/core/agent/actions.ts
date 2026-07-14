@@ -1,6 +1,7 @@
 import { Integration } from "@/constants";
 import type { DetectedApp } from "@/core/project/scan";
 import type { ExistingIntegration } from "@/core/project/existing";
+import type { AgentCapabilities } from "./drivers";
 import { loadBundledSkill } from "./skills";
 
 /** Skill reference file per framework, so an agent only sees its own platform's docs. */
@@ -51,14 +52,21 @@ export interface WizardAction {
   requiresOrgKey: boolean;
   /** "silent" = no final output; "report" = render the agent's final findings. */
   outputMode: "silent" | "report";
-  readOnly: boolean;
-  allowedTools: string[];
+  capabilities: AgentCapabilities;
   /** Variables for the action's prompt template. */
   vars: (ctx: ActionContext) => Record<string, string>;
 }
 
-const EDIT_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash"];
-const READ_TOOLS = ["Read", "Glob", "Grep", "Bash"];
+const WRITE_CAPABILITIES: AgentCapabilities = {
+  filesystem: "write",
+  network: true,
+  shell: "unrestricted",
+};
+const READ_CAPABILITIES: AgentCapabilities = {
+  filesystem: "read",
+  network: true,
+  shell: "read-only",
+};
 
 export const ACTIONS: WizardAction[] = [
   {
@@ -70,10 +78,12 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: false,
     requiresOrgKey: false,
     outputMode: "silent",
-    readOnly: false,
-    allowedTools: EDIT_TOOLS,
+    capabilities: WRITE_CAPABILITIES,
     vars: (ctx) => ({
-      skill: loadBundledSkill("superwall-integrate", FRAMEWORK_REF[ctx.app.framework.integration]),
+      skill: loadBundledSkill(
+        "superwall-integrate",
+        FRAMEWORK_REF[ctx.app.framework.integration],
+      ),
     }),
   },
   {
@@ -85,10 +95,12 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: true,
     requiresOrgKey: false,
     outputMode: "report",
-    readOnly: true,
-    allowedTools: READ_TOOLS,
+    capabilities: READ_CAPABILITIES,
     vars: (ctx) => ({
-      skill: loadBundledSkill("superwall-review", FRAMEWORK_REF[ctx.app.framework.integration]),
+      skill: loadBundledSkill(
+        "superwall-review",
+        FRAMEWORK_REF[ctx.app.framework.integration],
+      ),
     }),
   },
   {
@@ -100,11 +112,13 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: true,
     requiresOrgKey: false,
     outputMode: "silent",
-    readOnly: false,
-    allowedTools: EDIT_TOOLS,
+    capabilities: WRITE_CAPABILITIES,
     vars: (ctx) => ({
       prior_report: ctx.priorReport ?? "",
-      skill: loadBundledSkill("superwall-review", FRAMEWORK_REF[ctx.app.framework.integration]),
+      skill: loadBundledSkill(
+        "superwall-review",
+        FRAMEWORK_REF[ctx.app.framework.integration],
+      ),
     }),
   },
   {
@@ -116,11 +130,13 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: true,
     requiresOrgKey: false,
     outputMode: "report",
-    readOnly: true,
-    allowedTools: READ_TOOLS,
+    capabilities: READ_CAPABILITIES,
     vars: (ctx) => ({
       campaigns: ctx.campaigns ?? "",
-      skill: loadBundledSkill("superwall-placements", ["strategy", FRAMEWORK_REF[ctx.app.framework.integration]]),
+      skill: loadBundledSkill("superwall-placements", [
+        "strategy",
+        FRAMEWORK_REF[ctx.app.framework.integration],
+      ]),
     }),
   },
   {
@@ -132,12 +148,14 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: true,
     requiresOrgKey: false,
     outputMode: "silent",
-    readOnly: false,
-    allowedTools: EDIT_TOOLS,
+    capabilities: WRITE_CAPABILITIES,
     vars: (ctx) => ({
       prior_report: ctx.priorReport ?? "",
       campaigns: ctx.campaigns ?? "",
-      skill: loadBundledSkill("superwall-placements", ["strategy", FRAMEWORK_REF[ctx.app.framework.integration]]),
+      skill: loadBundledSkill("superwall-placements", [
+        "strategy",
+        FRAMEWORK_REF[ctx.app.framework.integration],
+      ]),
     }),
   },
   {
@@ -149,8 +167,7 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: false,
     requiresOrgKey: true,
     outputMode: "report",
-    readOnly: false, // needs network for the REST API, even though it edits no files
-    allowedTools: READ_TOOLS,
+    capabilities: { filesystem: "read", network: true, shell: "unrestricted" },
     vars: (ctx) => ({
       skill: loadBundledSkill("superwall-dashboard"),
       app_key: ctx.apiKey || "(the app you're working on)",
@@ -165,17 +182,24 @@ export const ACTIONS: WizardAction[] = [
     requiresIntegration: false,
     requiresOrgKey: false,
     outputMode: "report",
-    readOnly: false,
-    allowedTools: EDIT_TOOLS,
+    capabilities: WRITE_CAPABILITIES,
     vars: (ctx) => {
       const provider = ctx.billingProvider ?? "the current billing provider";
       return {
         provider,
-        goal: ctx.migrateIntent === "paywalls" ? `paywalls only, keep ${provider} for billing` : "full migration",
-        skill: loadBundledSkill("superwall-migrate", PROVIDER_REF[provider.toLowerCase()]),
+        goal:
+          ctx.migrateIntent === "paywalls"
+            ? `paywalls only, keep ${provider} for billing`
+            : "full migration",
+        skill: loadBundledSkill(
+          "superwall-migrate",
+          PROVIDER_REF[provider.toLowerCase()],
+        ),
       };
     },
   },
 ];
 
-export const actionById = Object.fromEntries(ACTIONS.map((a) => [a.id, a])) as Record<ActionId, WizardAction>;
+export const actionById = Object.fromEntries(
+  ACTIONS.map((a) => [a.id, a]),
+) as Record<ActionId, WizardAction>;

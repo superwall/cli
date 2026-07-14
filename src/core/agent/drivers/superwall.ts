@@ -1,5 +1,9 @@
 import { basename } from "node:path";
-import { query, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import {
+  query,
+  type Options,
+  type SDKMessage,
+} from "@anthropic-ai/claude-agent-sdk";
 import { VERSION } from "@/constants";
 import {
   getHostedAnthropicBaseUrl,
@@ -14,13 +18,16 @@ import type {
   DriverInfo,
 } from "./types";
 import { isUsageLimitText } from "./limits";
+import { toolsForCapabilities } from "./capabilities";
 
 const SDK_MODEL_ALIAS = "claude-sonnet-5";
 
 function toolSummary(name: string, input: unknown): string {
   const i = (input ?? {}) as Record<string, unknown>;
-  if (typeof i.file_path === "string") return `${name} ${basename(i.file_path)}`;
-  if (typeof i.command === "string") return `${name}: ${String(i.command).slice(0, 60)}`;
+  if (typeof i.file_path === "string")
+    return `${name} ${basename(i.file_path)}`;
+  if (typeof i.command === "string")
+    return `${name}: ${String(i.command).slice(0, 60)}`;
   if (typeof i.pattern === "string") return `${name} ${i.pattern}`;
   return name;
 }
@@ -30,7 +37,10 @@ function extractStatus(text: string): string | undefined {
   return m?.[1]?.trim();
 }
 
-function emitAssistant(message: unknown, onEvent?: (e: AgentEvent) => void): void {
+function emitAssistant(
+  message: unknown,
+  onEvent?: (e: AgentEvent) => void,
+): void {
   if (!onEvent) return;
   const content = (message as { content?: unknown })?.content;
   if (!Array.isArray(content)) return;
@@ -38,17 +48,24 @@ function emitAssistant(message: unknown, onEvent?: (e: AgentEvent) => void): voi
     if (block?.type === "text" && typeof block.text === "string") {
       const status = extractStatus(block.text);
       if (status) onEvent({ type: "status", text: status });
-      else if (block.text.trim()) onEvent({ type: "text", text: block.text.trim() });
+      else if (block.text.trim())
+        onEvent({ type: "text", text: block.text.trim() });
     } else if (block?.type === "tool_use" && typeof block.name === "string") {
-      onEvent({ type: "tool", name: block.name, summary: toolSummary(block.name, block.input) });
+      onEvent({
+        type: "tool",
+        name: block.name,
+        summary: toolSummary(block.name, block.input),
+      });
     }
   }
 }
 
 function resultText(message: SDKMessage): string | undefined {
   if (message.type !== "result") return undefined;
-  if ("result" in message && typeof message.result === "string") return message.result;
-  if ("errors" in message && Array.isArray(message.errors)) return message.errors.join("\n");
+  if ("result" in message && typeof message.result === "string")
+    return message.result;
+  if ("errors" in message && Array.isArray(message.errors))
+    return message.errors.join("\n");
   return undefined;
 }
 
@@ -70,14 +87,14 @@ function buildEnv(token: string): Options["env"] {
 }
 
 async function getRunAuth(): Promise<
-  | { ok: true; token: string }
-  | { ok: false; message: string }
+  { ok: true; token: string } | { ok: false; message: string }
 > {
   const token = await getHostedAuthToken();
   if (!token) {
     return {
       ok: false,
-      message: "Sign in with `superwall login` to use the bundled Superwall Agent.",
+      message:
+        "Sign in with `superwall login` to use the bundled Superwall Agent.",
     };
   }
 
@@ -103,7 +120,11 @@ export const superwallDriver: AgentDriver = {
   displayName: "Superwall Agent",
 
   async detect(): Promise<DriverInfo | null> {
-    return { id: "superwall", displayName: "Superwall Agent", bin: "claude-agent-sdk" };
+    return {
+      id: "superwall",
+      displayName: "Superwall Agent",
+      bin: "claude-agent-sdk",
+    };
   },
 
   async run(opts: AgentRunOptions): Promise<AgentResult> {
@@ -113,7 +134,9 @@ export const superwallDriver: AgentDriver = {
       return {
         ok: false,
         finalText: auth.message,
-        failureReason: isUsageLimitText(auth.message) ? "usage-limit" : undefined,
+        failureReason: isUsageLimitText(auth.message)
+          ? "usage-limit"
+          : undefined,
       };
     }
 
@@ -130,9 +153,13 @@ export const superwallDriver: AgentDriver = {
         abortController,
         cwd: opts.cwd,
         tools: { type: "preset", preset: "claude_code" },
-        allowedTools: opts.allowedTools,
-        disallowedTools: opts.readOnly ? ["Write", "Edit", "MultiEdit", "NotebookEdit"] : undefined,
-        permissionMode: opts.readOnly ? "default" : "acceptEdits",
+        allowedTools: toolsForCapabilities(opts.capabilities),
+        disallowedTools:
+          opts.capabilities.filesystem === "read"
+            ? ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+            : undefined,
+        permissionMode:
+          opts.capabilities.filesystem === "read" ? "plan" : "acceptEdits",
         systemPrompt: opts.systemAppend
           ? { type: "preset", preset: "claude_code", append: opts.systemAppend }
           : { type: "preset", preset: "claude_code" },
@@ -167,7 +194,8 @@ export const superwallDriver: AgentDriver = {
     return {
       finalText,
       ok,
-      failureReason: !ok && isUsageLimitText(finalText) ? "usage-limit" : undefined,
+      failureReason:
+        !ok && isUsageLimitText(finalText) ? "usage-limit" : undefined,
     };
   },
 };

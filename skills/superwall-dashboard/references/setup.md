@@ -11,7 +11,7 @@ Detailed recipes for the `superwall-dashboard` skill. Every command takes `--jso
 
 `superwall apps list --json` returns projects with nested `applications` (each has `id`,
 `platform`, `bundle_id`, `public_api_key`). One project holds one app per platform, so with a
-single app the CLI auto-scopes; pass the flags explicitly in monorepos or multi-app orgs.
+single app the CLI auto-scopes; agents always pass the flags explicitly.
 
 ## Products
 
@@ -44,8 +44,8 @@ There is **no** `products import` subcommand. Two ways to import:
 
    ```bash
    # one-time: upload the ASC API key to Superwall's vault (nothing stored locally)
-   superwall asc keys set --key-id <KEY_ID> --issuer <ISSUER_ID> --key-file ./AuthKey_XXptr.p8
-   superwall asc keys list                       # confirm connected; note the team id
+   superwall asc keys set --key-id <KEY_ID> --issuer <ISSUER_ID> --key-file ./AuthKey_XXptr.p8 --json
+   superwall asc keys list --json                # confirm connected; note the team id
 
    # enumerate real products for the app (by bundle id or ASC app id)
    superwall asc subscriptions com.app.bundle --json   # renewing subs
@@ -54,7 +54,7 @@ There is **no** `products import` subcommand. Two ways to import:
    superwall asc apps --json                            # list ASC apps if unsure of the id
 
    # create each returned productId, granting your entitlement
-   superwall products create com.app.pro.yearly --entitlement pro --json
+   superwall products create com.app.pro.yearly --entitlement pro --project <id> --json
    ```
 
    Products imported this way carry only the identifier (and reference name); Xcode/StoreKit and
@@ -63,7 +63,7 @@ There is **no** `products import` subcommand. Two ways to import:
 ### Generate a local `.storekit` file (for Xcode testing without sandbox)
 
 ```bash
-superwall products storekit --out Superwall.storekit --json
+superwall products storekit --project <id> --out Superwall.storekit --json
 ```
 
 Seeds product identifiers into a StoreKit configuration file; Xcode refines pricing/types on import.
@@ -71,7 +71,7 @@ Seeds product identifiers into a StoreKit configuration file; Xcode refines pric
 ## Entitlements
 
 ```bash
-superwall entitlements list --json
+superwall entitlements list --project <id> --json
 superwall entitlements create pro --project <id> --json
 ```
 
@@ -81,9 +81,9 @@ Default to a single coarse `pro` entitlement. Add more only for genuine tiers (e
 ## Campaigns + placements
 
 ```bash
-superwall campaigns list --json
-superwall campaigns create "Onboarding" --app <id> --json          # returns the campaign id
-superwall campaigns placement <campaignId> onboarding_complete --app <id> --json
+superwall campaigns list --project <id> --app <id> --json
+superwall campaigns create "Onboarding" onboarding_complete --project <id> --app <id> --json
+superwall campaigns placement <campaignId> another_placement --project <id> --app <id> --json
 ```
 
 - `create` takes a **description**, not an identifier — name it for the surface.
@@ -93,7 +93,7 @@ superwall campaigns placement <campaignId> onboarding_complete --app <id> --json
 ## What the CLI cannot do (leave manual)
 
 - **Design the paywall** and **attach products to it** — done in the Superwall dashboard's paywall
-  editor. `superwall paywalls list --json` shows what exists; there is no paywall create/design CLI.
+  editor. `superwall paywalls list --project <id> --app <id> --json` shows what exists; there is no paywall create/design CLI.
 - **Configure audiences / experiment splits** beyond the default — done in the dashboard.
 
 Report these as the remaining manual steps.

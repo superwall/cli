@@ -8,13 +8,16 @@ import type {
 } from "./types";
 import { onPath, readVersion, spawnStream } from "./spawn";
 import { isUsageLimitText } from "./limits";
+import { toolsForCapabilities } from "./capabilities";
 
 const BIN = "claude";
 
 function toolSummary(name: string, input: unknown): string {
   const i = (input ?? {}) as Record<string, unknown>;
-  if (typeof i.file_path === "string") return `${name} ${basename(i.file_path)}`;
-  if (typeof i.command === "string") return `${name}: ${String(i.command).slice(0, 60)}`;
+  if (typeof i.file_path === "string")
+    return `${name} ${basename(i.file_path)}`;
+  if (typeof i.command === "string")
+    return `${name}: ${String(i.command).slice(0, 60)}`;
   if (typeof i.pattern === "string") return `${name} ${i.pattern}`;
   return name;
 }
@@ -24,7 +27,10 @@ function extractStatus(text: string): string | undefined {
   return m?.[1]?.trim();
 }
 
-function emitAssistant(message: unknown, onEvent?: (e: AgentEvent) => void): void {
+function emitAssistant(
+  message: unknown,
+  onEvent?: (e: AgentEvent) => void,
+): void {
   if (!onEvent) return;
   const content = (message as { content?: unknown })?.content;
   if (!Array.isArray(content)) return;
@@ -32,9 +38,14 @@ function emitAssistant(message: unknown, onEvent?: (e: AgentEvent) => void): voi
     if (block?.type === "text" && typeof block.text === "string") {
       const status = extractStatus(block.text);
       if (status) onEvent({ type: "status", text: status });
-      else if (block.text.trim()) onEvent({ type: "text", text: block.text.trim() });
+      else if (block.text.trim())
+        onEvent({ type: "text", text: block.text.trim() });
     } else if (block?.type === "tool_use" && typeof block.name === "string") {
-      onEvent({ type: "tool", name: block.name, summary: toolSummary(block.name, block.input) });
+      onEvent({
+        type: "tool",
+        name: block.name,
+        summary: toolSummary(block.name, block.input),
+      });
     }
   }
 }
@@ -45,27 +56,16 @@ export const claudeDriver: AgentDriver = {
 
   async detect(): Promise<DriverInfo | null> {
     if (!(await onPath(BIN))) return null;
-    return { id: "claude", displayName: "Claude Code", bin: BIN, version: await readVersion(BIN) };
+    return {
+      id: "claude",
+      displayName: "Claude Code",
+      bin: BIN,
+      version: await readVersion(BIN),
+    };
   },
 
   async run(opts: AgentRunOptions): Promise<AgentResult> {
-    const args = [
-      "-p",
-      opts.prompt,
-      "--output-format",
-      "stream-json",
-      "--verbose",
-      "--permission-mode",
-      "acceptEdits",
-      "--add-dir",
-      opts.cwd,
-    ];
-    if (opts.allowedTools?.length) {
-      args.push("--allowedTools", opts.allowedTools.join(","));
-    }
-    if (opts.systemAppend) {
-      args.push("--append-system-prompt", opts.systemAppend);
-    }
+    const args = buildClaudeArgs(opts);
 
     let finalText: string | undefined;
     let ok = false;
@@ -97,12 +97,36 @@ export const claudeDriver: AgentDriver = {
     });
 
     if (code !== 0 && !ok) {
-      opts.onEvent?.({ type: "error", message: `claude exited with code ${code}` });
+      opts.onEvent?.({
+        type: "error",
+        message: `claude exited with code ${code}`,
+      });
     }
     return {
       finalText,
       ok,
-      failureReason: !ok && (usageLimited || isUsageLimitText(finalText)) ? "usage-limit" : undefined,
+      failureReason:
+        !ok && (usageLimited || isUsageLimitText(finalText))
+          ? "usage-limit"
+          : undefined,
     };
   },
 };
+
+export function buildClaudeArgs(opts: AgentRunOptions): string[] {
+  const args = [
+    "-p",
+    opts.prompt,
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    opts.capabilities.filesystem === "read" ? "plan" : "acceptEdits",
+    "--add-dir",
+    opts.cwd,
+    "--allowedTools",
+    toolsForCapabilities(opts.capabilities).join(","),
+  ];
+  if (opts.systemAppend) args.push("--append-system-prompt", opts.systemAppend);
+  return args;
+}

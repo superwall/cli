@@ -16,8 +16,13 @@ export function bundledSkillsDir(): string {
 }
 
 /** SKILL.md body, plus references/<name>.md for each given reference (framework/provider depth). */
-export function loadBundledSkill(id: BundledSkillId, reference?: string | Array<string | undefined>): string {
-  const refs = (Array.isArray(reference) ? reference : [reference]).filter((r): r is string => !!r);
+export function loadBundledSkill(
+  id: BundledSkillId,
+  reference?: string | Array<string | undefined>,
+): string {
+  const refs = (Array.isArray(reference) ? reference : [reference]).filter(
+    (r): r is string => !!r,
+  );
   const key = refs.length ? `${id}#${refs.join("+")}` : id;
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
@@ -30,9 +35,11 @@ export function loadBundledSkill(id: BundledSkillId, reference?: string | Array<
 
 function readSkillFile(rel: string): string {
   try {
-    return stripFrontmatter(readFileSync(`${packagedDir("skills")}${rel}`, "utf8")).trim();
-  } catch {
-    return "";
+    return stripFrontmatter(
+      readFileSync(`${packagedDir("skills")}${rel}`, "utf8"),
+    ).trim();
+  } catch (error) {
+    throw new Error(`Bundled skill asset is missing: ${rel}`, { cause: error });
   }
 }
 
@@ -55,27 +62,46 @@ export interface SkillInfo {
 export const KNOWN_SKILLS: SkillInfo[] = [
   {
     name: "superwall",
-    summary: "Resources, ClickHouse SQL analytics, docs, SDK triage, and dashboard links",
+    summary:
+      "Resources, ClickHouse SQL analytics, docs, SDK triage, and dashboard links",
   },
-  { name: "superwall-editor", summary: "Build & edit live paywalls, onboarding, and web2app flows from the CLI" },
+  {
+    name: "superwall-editor",
+    summary:
+      "Build & edit live paywalls, onboarding, and web2app flows from the CLI",
+  },
   { name: "wwdc", summary: "WWDC session lookup, comparison, and citation" },
 ];
 
 export async function fetchToolkitSkills(): Promise<SkillInfo[]> {
   try {
-    const res = await fetch(`https://api.github.com/repos/${SUPERWALL_SKILLS_SOURCE}/contents/skills`, {
-      headers: { accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(6000),
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${SUPERWALL_SKILLS_SOURCE}/contents/skills`,
+      {
+        headers: { accept: "application/vnd.github+json" },
+        signal: AbortSignal.timeout(6000),
+      },
+    );
     if (!res.ok) return KNOWN_SKILLS;
     const entries = (await res.json()) as Array<{ name: string; type: string }>;
     const dirs = entries.filter((e) => e.type === "dir").map((e) => e.name);
     if (dirs.length === 0) return KNOWN_SKILLS;
     const skills = await Promise.all(
-      dirs.map(async (name): Promise<SkillInfo> => ({ name, summary: await fetchSkillSummary(name) })),
+      dirs.map(
+        async (name): Promise<SkillInfo> => ({
+          name,
+          summary: await fetchSkillSummary(name),
+        }),
+      ),
     );
     // Main skill first, rest alphabetical.
-    return skills.sort((a, b) => (a.name === "superwall" ? -1 : b.name === "superwall" ? 1 : a.name.localeCompare(b.name)));
+    return skills.sort((a, b) =>
+      a.name === "superwall"
+        ? -1
+        : b.name === "superwall"
+          ? 1
+          : a.name.localeCompare(b.name),
+    );
   } catch {
     return KNOWN_SKILLS;
   }
@@ -91,7 +117,9 @@ async function fetchSkillSummary(name: string): Promise<string> {
     const raw = (await res.text()).match(/^description:\s*(.+)$/m)?.[1] ?? "";
     const description = raw.trim().replace(/^["']|["'`]+$/g, "");
     const firstSentence = description.split(/(?<=\.)\s/)[0] ?? description;
-    return firstSentence.length > 64 ? `${firstSentence.slice(0, 61)}…` : firstSentence;
+    return firstSentence.length > 64
+      ? `${firstSentence.slice(0, 61)}…`
+      : firstSentence;
   } catch {
     return "";
   }
@@ -109,19 +137,44 @@ export interface InstallToolkitResult {
   command: string;
 }
 
-export async function installToolkit(opts: InstallToolkitOptions = {}): Promise<InstallToolkitResult> {
-  const args = ["-y", "skills@latest", "add", SUPERWALL_SKILLS_SOURCE, "--global", "--yes"];
+export async function installToolkit(
+  opts: InstallToolkitOptions = {},
+): Promise<InstallToolkitResult> {
+  const args = [
+    "-y",
+    "skills@latest",
+    "add",
+    SUPERWALL_SKILLS_SOURCE,
+    "--global",
+    "--yes",
+  ];
   if (opts.skills?.length) args.push("--skill", ...opts.skills);
   else args.push("--skill", "*");
   return runInstall(args, opts);
 }
 
 // `--copy` so the skills live independently of this package's install path.
-export async function installBundledSkills(opts: InstallToolkitOptions = {}): Promise<InstallToolkitResult> {
-  return runInstall(["-y", "skills@latest", "add", bundledSkillsDir(), "--global", "--yes", "--copy"], opts);
+export async function installBundledSkills(
+  opts: InstallToolkitOptions = {},
+): Promise<InstallToolkitResult> {
+  return runInstall(
+    [
+      "-y",
+      "skills@latest",
+      "add",
+      bundledSkillsDir(),
+      "--global",
+      "--yes",
+      "--copy",
+    ],
+    opts,
+  );
 }
 
-async function runInstall(args: string[], opts: InstallToolkitOptions): Promise<InstallToolkitResult> {
+async function runInstall(
+  args: string[],
+  opts: InstallToolkitOptions,
+): Promise<InstallToolkitResult> {
   const command = `npx ${args.join(" ")}`;
   if (opts.dryRun) return { ok: true, command };
   const { code } = await spawnStream({

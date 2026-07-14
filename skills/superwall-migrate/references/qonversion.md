@@ -109,15 +109,15 @@ Produce: product ids, entitlement/permission ids (→ entitlements), and one row
 
 ## 4. Dashboard-side re-creation (CLI)
 
+```bash
+superwall entitlements create premium --project <projectId> --json
+superwall products create com.app.premium_monthly --name "Premium Monthly" --project <projectId> --json
+superwall products create com.app.premium_yearly --name "Premium Yearly" --project <projectId> --json
+superwall campaigns create "Main paywall" paywall_main --project <projectId> --app <appId> --json
 ```
-superwall entitlements create premium
-superwall products create com.app.premium_monthly --name "Premium Monthly"
-superwall products create com.app.premium_yearly  --name "Premium Yearly"
-superwall campaigns create "Main paywall"
-superwall campaigns placement <campaignId> paywall_main
-```
-Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set`).
-Verify: `superwall entitlements list --json`, `superwall products list --json`, `superwall campaigns list --json`.
+Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set … --json`).
+Verify with the same explicit ids: `superwall entitlements list --project <projectId> --json`,
+`superwall products list --project <projectId> --json`, and `superwall campaigns list --project <projectId> --app <appId> --json`.
 
 ## 5. Code replacement
 

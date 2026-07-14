@@ -1,13 +1,9 @@
+import { NotLoggedInError } from "./errors";
 import { loadSession, saveSession, type Session } from "./storage";
 
 const EXPIRY_SKEW_MS = 60_000;
 
-export class NotLoggedInError extends Error {
-  constructor() {
-    super("Not logged in. Run `superwall login` (or `superwall login --api-key <key>`).");
-    this.name = "NotLoggedInError";
-  }
-}
+export { NotLoggedInError } from "./errors";
 
 function accessTokenIsFresh(session: Session): boolean {
   return (
@@ -19,7 +15,8 @@ function accessTokenIsFresh(session: Session): boolean {
 async function refreshAccessToken(
   session: Session,
 ): Promise<(Session & { accessToken: string }) | null> {
-  if (!session.refreshToken || !session.tokenEndpoint || !session.oauthClientId) return null;
+  if (!session.refreshToken || !session.tokenEndpoint || !session.oauthClientId)
+    return null;
   try {
     const res = await fetch(session.tokenEndpoint, {
       method: "POST",
@@ -41,7 +38,9 @@ async function refreshAccessToken(
       ...session,
       accessToken: d.access_token,
       refreshToken: d.refresh_token ?? session.refreshToken,
-      accessTokenExpiresAt: d.expires_in ? Date.now() + d.expires_in * 1000 : undefined,
+      accessTokenExpiresAt: d.expires_in
+        ? Date.now() + d.expires_in * 1000
+        : undefined,
     };
     saveSession(updated);
     return updated;
@@ -62,7 +61,8 @@ export async function resolveAuthToken(
   session: Session,
 ): Promise<{ token: string; session: Session }> {
   if (session.accessToken && session.refreshToken) {
-    if (accessTokenIsFresh(session)) return { token: session.accessToken, session };
+    if (accessTokenIsFresh(session))
+      return { token: session.accessToken, session };
     const refreshed = await refreshAccessToken(session);
     if (refreshed) return { token: refreshed.accessToken, session: refreshed };
     // Refresh failed — fall through to an API key if one is stored.

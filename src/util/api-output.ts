@@ -1,15 +1,16 @@
-import { ui } from "@/ui";
 import type { CommandContext } from "@/command";
 
 export function emitJson(ctx: CommandContext, data: unknown): void {
-  const json = JSON.stringify(data, null, 2);
-  if (ctx.plain) process.stdout.write(json + "\n");
-  else ui.report(json);
+  ctx.output.data(data);
 }
 
-export async function apiCall<T>(ctx: CommandContext, label: string, work: () => Promise<T>): Promise<T> {
-  if (ctx.plain) return work();
-  const spin = ui.spinner();
+export async function apiCall<T>(
+  ctx: CommandContext,
+  label: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  if (ctx.outputMode !== "rich") return work();
+  const spin = ctx.ui.spinner();
   spin.start(label);
   try {
     const result = await work();

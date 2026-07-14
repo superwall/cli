@@ -1,6 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { formatJson } from "@/util/json";
 
 export interface Session {
   authMethod?: "oauth" | "api_key";
@@ -27,7 +34,7 @@ function file(): string {
 
 export function saveSession(session: Session): void {
   mkdirSync(dir(), { recursive: true, mode: 0o700 });
-  writeFileSync(file(), JSON.stringify(session, null, 2), { mode: 0o600 });
+  writeFileSync(file(), `${formatJson(session)}\n`, { mode: 0o600 });
 }
 
 export function loadSession(): Session | null {

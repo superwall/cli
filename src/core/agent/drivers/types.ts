@@ -4,12 +4,17 @@ export type AgentEvent =
   | { type: "status"; text: string }
   | { type: "error"; message: string };
 
+export interface AgentCapabilities {
+  filesystem: "read" | "write";
+  network: boolean;
+  shell: "none" | "read-only" | "unrestricted";
+}
+
 export interface AgentRunOptions {
   prompt: string;
   cwd: string;
   systemAppend?: string;
-  allowedTools?: string[];
-  readOnly?: boolean;
+  capabilities: AgentCapabilities;
   onEvent?: (event: AgentEvent) => void;
   signal?: AbortSignal;
 }

@@ -6,7 +6,10 @@ import { loadBundledSkill } from "@/core/agent/skills";
 test("review uses the broad setup skill rather than the placement skill", () => {
   const body = loadBundledSkill("superwall-review", "ios");
 
-  assert.match(body, /Review the integration as a system, not as a placement inventory/);
+  assert.match(
+    body,
+    /Review the integration as a system, not as a placement inventory/,
+  );
   assert.match(body, /Purchases & subscriptions/);
   assert.match(body, /Deep links and Web Checkout/);
   assert.match(body, /Analytics events becoming placements is recommended/);
@@ -25,14 +28,23 @@ test("review composes exactly one framework reference", () => {
     const body = loadBundledSkill("superwall-review", reference);
     assert.match(body, new RegExp(`# Review Superwall — ${heading}`));
     for (const [, other] of cases) {
-      if (other !== heading) assert.doesNotMatch(body, new RegExp(`# Review Superwall — ${other}`));
+      if (other !== heading)
+        assert.doesNotMatch(body, new RegExp(`# Review Superwall — ${other}`));
     }
   }
 });
 
 test("review action is read-only and fix action is writable", () => {
-  assert.equal(actionById.review.readOnly, true);
+  assert.equal(actionById.review.capabilities.filesystem, "read");
+  assert.equal(actionById.review.capabilities.network, true);
   assert.equal(actionById.review.outputMode, "report");
-  assert.equal(actionById["review-fix"].readOnly, false);
+  assert.equal(actionById["review-fix"].capabilities.filesystem, "write");
   assert.equal(actionById["review-fix"].outputMode, "silent");
+});
+
+test("missing bundled references fail closed", () => {
+  assert.throws(
+    () => loadBundledSkill("superwall-review", "missing-framework"),
+    /Bundled skill asset is missing: superwall-review\/references\/missing-framework\.md/,
+  );
 });

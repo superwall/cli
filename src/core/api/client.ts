@@ -1,6 +1,7 @@
 import { API_HOST } from "@/constants";
 import { loadSession, type Session } from "@/core/auth/storage";
 import { resolveAuthToken } from "@/core/auth/token";
+import { NotLoggedInError } from "@/core/auth/errors";
 
 export class ApiError extends Error {
   constructor(
@@ -12,11 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-export class NotLoggedInError extends Error {
-  constructor() {
-    super("Not logged in. Run `superwall login` first.");
-  }
-}
+export { NotLoggedInError } from "@/core/auth/errors";
 
 export class SuperwallApi {
   private constructor(private session: Session) {}
@@ -32,7 +29,11 @@ export class SuperwallApi {
   }
 
   get org(): { id?: string; name?: string; count: number } {
-    return { id: this.session.orgId, name: this.session.orgName, count: this.session.orgCount ?? 1 };
+    return {
+      id: this.session.orgId,
+      name: this.session.orgName,
+      count: this.session.orgCount ?? 1,
+    };
   }
   get userEmail(): string | undefined {
     return this.session.userEmail;
@@ -42,7 +43,11 @@ export class SuperwallApi {
     return this.session.host || API_HOST;
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
     const { token, session } = await resolveAuthToken(this.session);
     this.session = session;
     const res = await fetch(`${this.base()}${path}`, {
@@ -56,7 +61,11 @@ export class SuperwallApi {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new ApiError(`${method} ${path} → HTTP ${res.status}`, res.status, text);
+      throw new ApiError(
+        `${method} ${path} → HTTP ${res.status}`,
+        res.status,
+        text,
+      );
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;

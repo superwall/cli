@@ -130,7 +130,7 @@ func addProject() {
 - Names are stable and match presenting campaigns exactly; preserve intentional
   analytics taxonomies and never rename for style alone.
 - Cross-check placements expected to present now with `superwall campaigns list
-  --json`; analytics-only, future, and paused placements may be unrouted.
+  --project <id> --app <id> --json`; analytics-only, future, and paused placements may be unrouted.
 - Obvious premium entry points (upgrade buttons, gated exports, quota limits,
   onboarding end) that have **no** placement.
 
@@ -139,9 +139,9 @@ func addProject() {
 A placement is inert without a campaign:
 
 ```bash
-superwall campaigns list --json
-superwall campaigns create "Editor upgrade paywall"
-superwall campaigns placement <campaignId> unlock_export
+superwall campaigns list --project <id> --app <id> --json
+superwall campaigns create "Editor upgrade paywall" unlock_export --project <id> --app <id> --json
+superwall campaigns placement <campaignId> another_placement --project <id> --app <id> --json
 ```
 
 ## Pitfalls

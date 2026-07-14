@@ -23,9 +23,16 @@ export const RESOURCES = {
   entitlements: "/v2/entitlements",
 } as const;
 
-export type ResourceName = keyof typeof RESOURCES | "apps" | "orgs" | "projects";
+export type ResourceName =
+  | keyof typeof RESOURCES
+  | "apps"
+  | "orgs"
+  | "projects";
 
-const RESOURCE_SCOPE: Record<keyof typeof RESOURCES, "project" | "application"> = {
+const RESOURCE_SCOPE: Record<
+  keyof typeof RESOURCES,
+  "project" | "application"
+> = {
   products: "project",
   entitlements: "project",
   campaigns: "application",
@@ -65,42 +72,41 @@ export interface Scope {
   appName?: string;
 }
 
-export async function resolveScope(
-  api: SuperwallApi,
-  opts: { projectId?: string; applicationId?: string } = {},
-): Promise<Scope> {
-  const projects = await listProjects(api);
-  const project = opts.projectId ? projects.find((p) => String(p.id) === opts.projectId) : projects[0];
-  if (!project) throw new Error("No project found in this organization.");
-  const apps = project.applications ?? [];
-  const app = opts.applicationId ? apps.find((a) => String(a.id) === opts.applicationId) : apps[0];
-  return {
-    projectId: String(project.id),
-    applicationId: app ? String(app.id) : undefined,
-    projectName: project.name,
-    appName: app?.name,
-  };
-}
-
 export async function listProjects(api: SuperwallApi): Promise<Project[]> {
   return api.list<Project>("/v2/projects");
 }
 
-export async function listApplications(api: SuperwallApi): Promise<Application[]> {
+export async function listApplications(
+  api: SuperwallApi,
+): Promise<Application[]> {
   const projects = await listProjects(api);
   return projects.flatMap((p) => p.applications ?? []);
 }
 
-export async function listResource(api: SuperwallApi, name: keyof typeof RESOURCES, scope: Scope): Promise<Row[]> {
+export async function listResource(
+  api: SuperwallApi,
+  name: keyof typeof RESOURCES,
+  scope: Scope,
+): Promise<Row[]> {
   if (RESOURCE_SCOPE[name] === "application") {
-    if (!scope.applicationId) throw new Error("This project has no application yet.");
-    return api.list<Row>(`${RESOURCES[name]}?application_id=${scope.applicationId}`);
+    if (!scope.applicationId)
+      throw new Error("This project has no application yet.");
+    return api.list<Row>(
+      `${RESOURCES[name]}?application_id=${scope.applicationId}`,
+    );
   }
   return api.list<Row>(`${RESOURCES[name]}?project_id=${scope.projectId}`);
 }
 
-export function createEntitlement(api: SuperwallApi, scope: Scope, identifier: string): Promise<Row> {
-  return api.post<Row>("/v2/entitlements", { project_id: scope.projectId, identifier });
+export function createEntitlement(
+  api: SuperwallApi,
+  scope: Scope,
+  identifier: string,
+): Promise<Row> {
+  return api.post<Row>("/v2/entitlements", {
+    project_id: scope.projectId,
+    identifier,
+  });
 }
 
 export type SubscriptionPeriod = "day" | "week" | "month" | "year";
@@ -109,7 +115,11 @@ export interface ProductCreateOpts {
   name?: string;
   /** amount is in the smallest unit (cents). */
   price?: { amount: number; currency: string };
-  subscription?: { period: SubscriptionPeriod; period_count?: number; trial_period_days?: number };
+  subscription?: {
+    period: SubscriptionPeriod;
+    period_count?: number;
+    trial_period_days?: number;
+  };
   entitlements?: string[];
 }
 
@@ -136,8 +146,12 @@ export async function listOrganizations(api: SuperwallApi): Promise<Row[]> {
 
 export function createProject(api: SuperwallApi, name: string): Promise<Row> {
   const orgId = api.org.id;
-  if (!orgId) throw new Error("No organization in the session — run `superwall login`.");
-  return api.post<Row>("/v2/projects", { name, organization_id: Number(orgId) });
+  if (!orgId)
+    throw new Error("No organization in the session — run `superwall login`.");
+  return api.post<Row>("/v2/projects", {
+    name,
+    organization_id: Number(orgId),
+  });
 }
 
 export function createApplication(
@@ -152,24 +166,45 @@ export function createApplication(
   });
 }
 
-export function createCampaign(api: SuperwallApi, scope: Scope, description: string, placement: string): Promise<Row> {
-  if (!scope.applicationId) throw new Error("This project has no application to create a campaign in.");
+export function createCampaign(
+  api: SuperwallApi,
+  scope: Scope,
+  description: string,
+  placement: string,
+): Promise<Row> {
+  if (!scope.applicationId)
+    throw new Error("This project has no application to create a campaign in.");
   // The API requires >=1 placement and >=1 audience at creation. Seed a 100%
   // holdout so nothing presents until a paywall is attached in the dashboard.
   return api.post<Row>("/v2/campaigns", {
     application_id: scope.applicationId,
     description,
     placements: [{ event_name: placement }],
-    audiences: [{ variants: [{ type: "holdout", percentage: 100, paywall: null }] }],
+    audiences: [
+      { variants: [{ type: "holdout", percentage: 100, paywall: null }] },
+    ],
   });
 }
 
-export function addPlacement(api: SuperwallApi, campaignId: string, placement: string): Promise<Row> {
-  return api.post<Row>(`/v2/campaigns/${campaignId}/placements`, { event_name: placement });
+export function addPlacement(
+  api: SuperwallApi,
+  campaignId: string,
+  placement: string,
+): Promise<Row> {
+  return api.post<Row>(`/v2/campaigns/${campaignId}/placements`, {
+    event_name: placement,
+  });
 }
 
 export function rowName(row: Row): string {
-  for (const key of ["name", "identifier", "product_identifier", "title", "description", "id"]) {
+  for (const key of [
+    "name",
+    "identifier",
+    "product_identifier",
+    "title",
+    "description",
+    "id",
+  ]) {
     const v = row[key];
     if (typeof v === "string" && v) return v;
     if (typeof v === "number") return String(v);

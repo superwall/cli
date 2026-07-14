@@ -187,21 +187,21 @@ account: stop dashboard work, say so loudly in the summary/handback file, and ha
 `superwall login` with the owning account. Never create resources in an unrelated project; never
 call the migration complete with dashboard work silently skipped.
 
-For each entitlement and product found:
-```
-superwall entitlements create pro
-superwall products create com.app.pro_monthly --name "Pro Monthly"
-superwall products create com.app.pro_yearly  --name "Pro Yearly"
+For each entitlement and product found, use the project/app ids from the account gate:
+```bash
+superwall entitlements create pro --project <projectId> --json
+superwall products create com.app.pro_monthly --name "Pro Monthly" --project <projectId> --json
+superwall products create com.app.pro_yearly --name "Pro Yearly" --project <projectId> --json
 ```
 Product ids MUST equal the existing App Store / Play SKUs (import via ASC connection instead of
-manual create when possible — `superwall asc keys set`). Then one campaign with
+manual create when possible — `superwall asc keys set … --json`). Then one campaign with
 a placement per call site:
+```bash
+superwall campaigns create "Main paywall" start_workout --project <projectId> --app <appId> --json
+superwall campaigns placement <campaignId> unlock_export --project <projectId> --app <appId> --json
 ```
-superwall campaigns create "Main paywall"
-superwall campaigns placement <campaignId> start_workout
-superwall campaigns placement <campaignId> unlock_export
-```
-Verify: `superwall entitlements list --json`, `superwall products list --json`, `superwall campaigns list --json`.
+Verify with the same explicit ids: `superwall entitlements list --project <projectId> --json`,
+`superwall products list --project <projectId> --json`, and `superwall campaigns list --project <projectId> --app <appId> --json`.
 
 ## 5. Code replacement
 

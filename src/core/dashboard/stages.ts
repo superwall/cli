@@ -6,9 +6,21 @@ import { DASHBOARD_URL } from "@/constants";
 import { ui } from "@/ui";
 import { withSpinner } from "@/ui/spinner";
 import { generateStoreKit } from "@/core/dashboard/storekit";
+import { formatJson } from "@/util/json";
 import { createAscConfig, listAscConfigs } from "@/core/api/asc";
-import { ascTypeDisplay, fetchUnimportedAscProducts, findAscAppId, listAscApps } from "@/core/api/asc-products";
-import { createProduct, listResource, rowName, type Row, type Scope } from "@/core/api/resources";
+import {
+  ascTypeDisplay,
+  fetchUnimportedAscProducts,
+  findAscAppId,
+  listAscApps,
+} from "@/core/api/asc-products";
+import {
+  createProduct,
+  listResource,
+  rowName,
+  type Row,
+  type Scope,
+} from "@/core/api/resources";
 import type { SuperwallApi } from "@/core/api/client";
 
 const SKIP = "__skip__";
@@ -29,28 +41,48 @@ type Flow = "back" | "done";
 
 export async function runProductsStage(ctx: StageCtx): Promise<void> {
   const { api, scope } = ctx;
-  const [products, ascConfigs] = await withSpinner("Checking products", async () => [
-    await listResource(api, "products", scope),
-    await listAscConfigs(api).catch(() => [] as Row[]),
-  ]);
-  const teamId = ascConfigs[0] ? String(ascConfigs[0].team_id ?? ascConfigs[0].id ?? "") : undefined;
+  const [products, ascConfigs] = await withSpinner(
+    "Checking products",
+    async () => [
+      await listResource(api, "products", scope),
+      await listAscConfigs(api).catch(() => [] as Row[]),
+    ],
+  );
+  const teamId = ascConfigs[0]
+    ? String(ascConfigs[0].team_id ?? ascConfigs[0].id ?? "")
+    : undefined;
   const storeKitFiles = await findStoreKitFiles(ctx.projectDir);
 
-  if (products.length > 0) ui.success(`${count(products.length, "product")} already in Superwall.`);
+  if (products.length > 0)
+    ui.success(`${count(products.length, "product")} already in Superwall.`);
   else ui.info("No products in Superwall yet.");
 
   for (;;) {
     const how = await ui.select({
       message: "How do you want to add products?",
       options: [
-        { value: "asc", label: "Import from App Store Connect", hint: teamId ? "Connected" : "Connect your account" },
+        {
+          value: "asc",
+          label: "Import from App Store Connect",
+          hint: teamId ? "Connected" : "Connect your account",
+        },
         {
           value: "storekit",
           label: "Import from a StoreKit file",
-          hint: storeKitFiles.length ? basename(storeKitFiles[0]!) : "No StoreKit file found",
+          hint: storeKitFiles.length
+            ? basename(storeKitFiles[0]!)
+            : "No StoreKit file found",
           disabled: storeKitFiles.length === 0,
         },
-        ...(products.length > 0 ? [{ value: "export", label: "Generate a .storekit file", hint: "For Xcode testing" }] : []),
+        ...(products.length > 0
+          ? [
+              {
+                value: "export",
+                label: "Generate a .storekit file",
+                hint: "For Xcode testing",
+              },
+            ]
+          : []),
         { value: SKIP, label: "Skip for now" },
       ],
       initialValue: "asc",
@@ -61,7 +93,8 @@ export async function runProductsStage(ctx: StageCtx): Promise<void> {
 
     let result: Flow = "done";
     if (how === "asc") result = await ascFlow(ctx, products, teamId);
-    else if (how === "storekit") result = await importFromStoreKit(ctx, products, storeKitFiles);
+    else if (how === "storekit")
+      result = await importFromStoreKit(ctx, products, storeKitFiles);
     else if (how === "export") writeStoreKit(products);
 
     if (result === "back") continue;
@@ -69,7 +102,11 @@ export async function runProductsStage(ctx: StageCtx): Promise<void> {
   }
 }
 
-async function ascFlow(ctx: StageCtx, products: Row[], teamId: string | undefined): Promise<Flow> {
+async function ascFlow(
+  ctx: StageCtx,
+  products: Row[],
+  teamId: string | undefined,
+): Promise<Flow> {
   let team = teamId;
   if (!team) {
     const connected = await connectAppStoreConnect(ctx);
@@ -87,14 +124,24 @@ async function findStoreKitFiles(dir?: string): Promise<string[]> {
       absolute: true,
       deep: 6,
       suppressErrors: true,
-      ignore: ["**/node_modules/**", "**/Pods/**", "**/build/**", "**/DerivedData/**", "**/.git/**"],
+      ignore: [
+        "**/node_modules/**",
+        "**/Pods/**",
+        "**/build/**",
+        "**/DerivedData/**",
+        "**/.git/**",
+      ],
     });
   } catch {
     return [];
   }
 }
 
-async function importFromStoreKit(ctx: StageCtx, existingProducts: Row[], files: string[]): Promise<Flow> {
+async function importFromStoreKit(
+  ctx: StageCtx,
+  existingProducts: Row[],
+  files: string[],
+): Promise<Flow> {
   const { api, scope } = ctx;
 
   let path = files[0]!;
@@ -145,12 +192,15 @@ async function importFromStoreKit(ctx: StageCtx, existingProducts: Row[], files:
 function storeKitProductIds(json: unknown): string[] {
   const ids = new Set<string>();
   const add = (arr: unknown) => {
-    if (Array.isArray(arr)) for (const p of arr) if (p?.productID) ids.add(String(p.productID));
+    if (Array.isArray(arr))
+      for (const p of arr) if (p?.productID) ids.add(String(p.productID));
   };
   const j = (json ?? {}) as Record<string, unknown>;
   add(j.products);
   add(j.nonRenewingSubscriptions);
-  for (const g of (j.subscriptionGroups as Array<Record<string, unknown>>) ?? []) add(g?.subscriptions);
+  for (const g of (j.subscriptionGroups as Array<Record<string, unknown>>) ??
+    [])
+    add(g?.subscriptions);
   return [...ids];
 }
 
@@ -193,7 +243,9 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
       privateKey = readFileSync(keyFilePath, "utf8");
       break;
     } catch {
-      ui.error(`Couldn't read \`${keyFilePath}\` — check the path and try again.`);
+      ui.error(
+        `Couldn't read \`${keyFilePath}\` — check the path and try again.`,
+      );
     }
   }
 
@@ -202,7 +254,13 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
   if (fromName) {
     keyId = fromName;
   } else {
-    const entered = await ui.text({ message: "Key ID", placeholder: "ABC123DEFG", validate: required, footer: "esc to go back", transient: true });
+    const entered = await ui.text({
+      message: "Key ID",
+      placeholder: "ABC123DEFG",
+      validate: required,
+      footer: "esc to go back",
+      transient: true,
+    });
     if (entered === null) return "back";
     keyId = entered.trim();
   }
@@ -226,10 +284,14 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
         }),
       );
       const teamId = String(config.team_id ?? config.id ?? "");
-      ui.success(`App Store Connect connected${teamId ? ` (team ${teamId})` : ""}.`);
+      ui.success(
+        `App Store Connect connected${teamId ? ` (team ${teamId})` : ""}.`,
+      );
       return teamId || "back";
     } catch {
-      ui.error("Couldn't verify that key. Check the Issuer ID and that the .p8 matches the Key ID, then try again.");
+      ui.error(
+        "Couldn't verify that key. Check the Issuer ID and that the .p8 matches the Key ID, then try again.",
+      );
     }
   }
 }
@@ -239,22 +301,38 @@ function keyIdFromFilename(path: string): string | undefined {
   return basename(path).match(/AuthKey_([A-Za-z0-9]+)\.p8$/i)?.[1];
 }
 
-async function importFromAsc(ctx: StageCtx, teamId: string, existingProducts: Row[]): Promise<Flow> {
+async function importFromAsc(
+  ctx: StageCtx,
+  teamId: string,
+  existingProducts: Row[],
+): Promise<Flow> {
   const { api, scope, bundleId } = ctx;
 
   let ascAppId = bundleId
-    ? await withSpinner("Finding your app in App Store Connect", () => findAscAppId(api, teamId, bundleId))
+    ? await withSpinner("Finding your app in App Store Connect", () =>
+        findAscAppId(api, teamId, bundleId),
+      )
     : undefined;
 
   if (!ascAppId) {
-    const apps = await withSpinner("Loading App Store Connect apps", () => listAscApps(api, teamId));
+    const apps = await withSpinner("Loading App Store Connect apps", () =>
+      listAscApps(api, teamId),
+    );
     if (apps.length === 0) {
-      ui.info("No apps in your App Store Connect account yet — skipping product import.");
+      ui.info(
+        "No apps in your App Store Connect account yet — skipping product import.",
+      );
       return "done";
     }
     const sel = await ui.select({
-      message: bundleId ? `No App Store Connect app matches \`${bundleId}\`. Pick one:` : "Which App Store Connect app?",
-      options: apps.map((a) => ({ value: a.id, label: a.name ?? a.id, hint: a.bundleId })),
+      message: bundleId
+        ? `No App Store Connect app matches \`${bundleId}\`. Pick one:`
+        : "Which App Store Connect app?",
+      options: apps.map((a) => ({
+        value: a.id,
+        label: a.name ?? a.id,
+        hint: a.bundleId,
+      })),
       footer: "esc to go back",
       transient: true,
     });
@@ -262,8 +340,15 @@ async function importFromAsc(ctx: StageCtx, teamId: string, existingProducts: Ro
     ascAppId = sel;
   }
 
-  const unimported = await withSpinner("Loading products from App Store Connect", () =>
-    fetchUnimportedAscProducts(api, teamId, ascAppId, existingIdSet(existingProducts)),
+  const unimported = await withSpinner(
+    "Loading products from App Store Connect",
+    () =>
+      fetchUnimportedAscProducts(
+        api,
+        teamId,
+        ascAppId,
+        existingIdSet(existingProducts),
+      ),
   );
   if (unimported.length === 0) {
     ui.success("All App Store Connect products are already imported.");
@@ -275,7 +360,9 @@ async function importFromAsc(ctx: StageCtx, teamId: string, existingProducts: Ro
     options: unimported.map((p) => ({
       value: p.productId,
       label: p.productId,
-      hint: [ascTypeDisplay(p.type), p.subscriptionPeriod].filter(Boolean).join(" · "),
+      hint: [ascTypeDisplay(p.type), p.subscriptionPeriod]
+        .filter(Boolean)
+        .join(" · "),
     })),
     initialValues: unimported.map((p) => p.productId),
   });
@@ -285,7 +372,9 @@ async function importFromAsc(ctx: StageCtx, teamId: string, existingProducts: Ro
   let imported = 0;
   for (const id of picked) {
     const p = byId.get(id);
-    await withSpinner(`Importing ${id}`, () => createProduct(api, scope, id, { name: p?.referenceName || undefined }));
+    await withSpinner(`Importing ${id}`, () =>
+      createProduct(api, scope, id, { name: p?.referenceName || undefined }),
+    );
     imported++;
   }
   ui.success(`Imported ${count(imported, "product")} from App Store Connect.`);
@@ -302,7 +391,10 @@ function expandHome(p: string): string {
 
 function cleanPath(input: string): string {
   let s = input.trim();
-  if (s.length >= 2 && ((s[0] === "'" && s.endsWith("'")) || (s[0] === '"' && s.endsWith('"')))) {
+  if (
+    s.length >= 2 &&
+    ((s[0] === "'" && s.endsWith("'")) || (s[0] === '"' && s.endsWith('"')))
+  ) {
     s = s.slice(1, -1);
   }
   s = s.replace(/\\ /g, " "); // drag-and-drop escapes spaces as "\ "
@@ -325,10 +417,13 @@ export function runPaywallStage(): void {
 
 export async function runVerifyStage(ctx: StageCtx): Promise<void> {
   const { api, scope } = ctx;
-  const [products, campaigns] = await withSpinner("Verifying setup", async () => [
-    await listResource(api, "products", scope),
-    await listResource(api, "campaigns", scope),
-  ]);
+  const [products, campaigns] = await withSpinner(
+    "Verifying setup",
+    async () => [
+      await listResource(api, "products", scope),
+      await listResource(api, "campaigns", scope),
+    ],
+  );
 
   line(products.length > 0, `Products in Superwall: ${products.length}`);
   line(campaigns.length > 0, `Campaigns: ${campaigns.length}`);
@@ -350,6 +445,6 @@ function line(ok: boolean, text: string): void {
 
 function writeStoreKit(products: Row[]): void {
   const out = "Superwall.storekit";
-  writeFileSync(out, JSON.stringify(generateStoreKit(products), null, 2));
+  writeFileSync(out, `${formatJson(generateStoreKit(products))}\n`);
   ui.success(`Wrote \`${out}\` with ${count(products.length, "product")}.`);
 }

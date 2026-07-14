@@ -8,16 +8,16 @@ export async function runFallback(installDir: string): Promise<void> {
 
   if (!top) {
     if (scan.comingSoon.length) {
-      ui.warn("Detected a web app — Superwall web support is coming soon.");
-      ui.outro("");
-      return;
+      throw new Error(
+        "Detected a web app — Superwall web support is coming soon.",
+      );
     }
-    ui.error(`No ${SUPPORTED_LABEL} app found here.`);
-    ui.outro("See https://superwall.com/docs to set up manually.");
-    return;
+    throw new Error(`No ${SUPPORTED_LABEL} app found here.`);
   }
 
-  ui.info(`Detected ${top.framework.name}${top.details ? ` · ${top.details}` : ""}`);
+  ui.info(
+    `Detected ${top.framework.name}${top.details ? ` · ${top.details}` : ""}`,
+  );
   ui.note(
     [
       `1. Install the SDK: ${top.framework.sdkPackage}`,

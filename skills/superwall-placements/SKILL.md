@@ -49,9 +49,9 @@ Exact API, gating semantics, placement examples, audit checklist, and pitfalls:
 
 A placement cannot present a paywall until a campaign routes it in the dashboard:
 
-- `superwall campaigns list --json` — existing campaigns and their placements.
-- `superwall campaigns create "<description>"` — create one if needed.
-- `superwall campaigns placement <campaignId> <placement_name>` — route a placement.
+- `superwall campaigns list --project <id> --app <id> --json` — existing campaigns and placements.
+- `superwall campaigns create "<description>" <placement_name> --project <id> --app <id> --json` — create one with its required first placement.
+- `superwall campaigns placement <campaignId> <placement_name> --project <id> --app <id> --json` — route another placement.
 
 Analytics-only, future, and paused placements may intentionally remain unrouted.
 For placements expected to present now, use one campaign per distinct paywall

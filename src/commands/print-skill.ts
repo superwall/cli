@@ -10,12 +10,18 @@ import { loadBundledSkill, type BundledSkillId } from "@/core/agent/skills";
  * framework/provider reference) for an agent to follow directly, instead of
  * the CLI orchestrating the run. No UI: stdout must stay clean markdown.
  */
-export function runPrintSkill(actionId: ActionId): (argv: Arguments) => Promise<void> {
+export function runPrintSkill(
+  actionId: ActionId,
+): (argv: Arguments) => Promise<void> {
   return async (argv) => {
-    const dir = resolve((argv.installDir as string | undefined) ?? process.cwd());
+    const dir = resolve(
+      (argv.installDir as string | undefined) ?? process.cwd(),
+    );
     const scan = await scanProject(dir).catch(() => null);
     const app = scan?.apps[0];
-    const frameworkRef = app ? FRAMEWORK_REF[app.framework.integration] : undefined;
+    const frameworkRef = app
+      ? FRAMEWORK_REF[app.framework.integration]
+      : undefined;
 
     // `integrate --skill` is the FULL journey — SDK → placements → campaigns —
     // so an agent following it does the complete setup (matching what the
@@ -60,12 +66,21 @@ export function runPrintSkill(actionId: ActionId): (argv: Arguments) => Promise<
       case "migrate": {
         skill = "superwall-migrate";
         const billing = app ? detectBilling(app) : null;
-        reference = billing?.revenueCat ? "revenuecat" : billing?.adapty ? "adapty" : billing?.qonversion ? "qonversion" : undefined;
+        reference = billing?.revenueCat
+          ? "revenuecat"
+          : billing?.adapty
+            ? "adapty"
+            : billing?.qonversion
+              ? "qonversion"
+              : undefined;
         break;
       }
     }
 
-    const body = loadBundledSkill(skill, withStrategy ? ["strategy", reference] : reference);
+    const body = loadBundledSkill(
+      skill,
+      withStrategy ? ["strategy", reference] : reference,
+    );
     if (!body) {
       process.stderr.write(`No bundled skill found for ${actionId}.\n`);
       process.exitCode = 1;

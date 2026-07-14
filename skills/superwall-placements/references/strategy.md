@@ -131,7 +131,7 @@ the placements that exist — start from the money.
      attach a paywall to without an app update. The highest-value finding.
    - **Expected presenter with no campaign** → presentation gap. Cross-check the
      registered names that are supposed to show or gate now against `superwall
-     campaigns list --json`. Analytics-only, future, and intentionally paused
+     campaigns list --project <id> --app <id> --json`. Analytics-only, future, and intentionally paused
      placements may be unrouted without being noise.
    - **Conflicting code-side entitlement check** → grep for
      subscription/entitlement reads at call sites (`subscriptionStatus`,
@@ -201,7 +201,7 @@ just to make the placement list shorter.
 - **Never rename for style alone.** Consistency is not worth breaking campaign
   routing or historical analytics.
 - **Reuse, never duplicate.** Before adding a name, check existing placements
-  (`superwall campaigns list --json`) and existing `register` calls. Two names for
+  (`superwall campaigns list --project <id> --app <id> --json`) and existing `register` calls. Two names for
   one intent split your data and double your campaign work.
 
 ## Dashboard routing (required for presentation, not instrumentation)
@@ -211,9 +211,9 @@ Campaigns hold one or more placements and use audience filters to decide what ea
 user sees. Analytics-only or future placements can remain unrouted intentionally.
 
 ```bash
-superwall campaigns list --json                                  # existing campaigns + placements
-superwall campaigns create "Editor upgrade paywall"              # create one if needed
-superwall campaigns placement <campaignId> unlock_export         # route a placement
+superwall campaigns list --project <id> --app <id> --json
+superwall campaigns create "Editor upgrade paywall" unlock_export --project <id> --app <id> --json
+superwall campaigns placement <campaignId> another_placement --project <id> --app <id> --json
 ```
 
 Rule of thumb: one campaign per distinct paywall surface/decision (onboarding,
