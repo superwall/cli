@@ -15,6 +15,15 @@ This migrates the **SDK integration**, not the whole product. Checklist:
   If ANY purchase can happen without Superwall making it (Mode B / Mode C), verify state is synced
   via a `PurchaseController`, observer mode, or a manual `subscriptionStatus` set — otherwise
   Superwall shows paywalls to paying users (§2)
+- [ ] **Inventory side-effects in RC purchase/restore callbacks before deleting** — backend sync
+  POSTs, analytics (Singular/PostHog/TikTok/…), attribution, post-purchase navigation — and reroute
+  each into a `SuperwallDelegate` (§5 "Side-effects")
+- [ ] **Identity lifecycle**: `identify` at login/session-restore; `reset()` on EVERY sign-out path
+  (logout, account deletion, forced 401) (§5)
+- [ ] **Inventory ALL other purchase stacks** (SwiftyStoreKit, `SKPaymentQueue`, IAPManager-style
+  singletons) — remove or explicitly retire; one transaction finisher only (§3)
+- [ ] **Dashboard account gate**: `superwall apps list --json` must show the app matching the code's
+  `pk_` key / bundle id BEFORE any create; wrong account → stop dashboard work loudly (§4)
 - [ ] Build + verify each placement; Restore Purchases as an existing subscriber (§7)
 - [ ] FULL only: remove RC dependency once verified
 - [ ] Hand back to user: **rebuild paywalls in the editor**, attach products, connect ASC/Play
@@ -159,7 +168,24 @@ CANNOT call `Superwall.shared.purchase(...)`. `curl -sL https://superwall.com/do
 
 Produce: list of product ids, entitlement ids, and one row per presentation call site → proposed `snake_case` placement.
 
+**Beyond RC — sweep the whole billing surface (real apps carry layers):**
+- Other purchase stacks: `SwiftyStoreKit`, `SKPaymentQueue`, `Transaction.updates`, `IAPManager`,
+  `StoreObserver`, Play `BillingClient` — each is a competing transaction finisher; plan removal or
+  explicit retirement for every one.
+- Existing Superwall wrappers: grep `Superwall.configure`, `SWPaywallManager`/`*PaywallManager`
+  singletons — hybrid apps often already configure Superwall once; never add a second configure.
+- ALL sign-out paths: logout screens, account-deletion flows, 401/session-expiry handlers — each
+  needs `Superwall.shared.reset()`.
+- Purchase-callback side-effects: backend POSTs, analytics, attribution, navigation (see §5
+  "Side-effects").
+
 ## 4. Dashboard-side re-creation (CLI)
+
+**Account gate first:** `superwall apps list --json` and confirm one app's `public_api_key` equals
+the `pk_` in the code (or the bundle id matches). No match = the CLI session is on the WRONG
+account: stop dashboard work, say so loudly in the summary/handback file, and have the user
+`superwall login` with the owning account. Never create resources in an unrelated project; never
+call the migration complete with dashboard work silently skipped.
 
 For each entitlement and product found:
 ```
@@ -209,8 +235,48 @@ Verify: `superwall entitlements list --json`, `superwall products list --json`, 
   // After:  Superwall.configure(apiKey: "…")
   ```
 - **Identity.** `Purchases.shared.logIn(id)` → `Superwall.shared.identify(userId: id)`; `logOut()` → `Superwall.shared.reset()`.
+  Then grep for sign-out paths logIn/logOut DIDN'T cover: account deletion, forced auth-failure
+  (401) logout, session expiry. Every one needs `reset()` — a missed path leaks the previous user's
+  identity and paywall assignments to the next login. `identify` must run at login AND app-launch
+  session-restore, BEFORE any placement can fire.
 - **Attributes.** `Purchases.shared.setAttributes([...])` → `Superwall.shared.setUserAttributes([...])`. Call `identify` BEFORE `setUserAttributes`; `identify` is idempotent.
 - Remove the RevenueCat dependency only after everything builds and is verified.
+
+### Side-effects — reroute what lived inside RC callbacks (FULL mode, CRITICAL)
+
+Real apps bury critical work inside `PurchaseController.purchase()` / RC delegate callbacks. A
+mechanical swap deletes it and everything still compiles — then production breaks. Seen verbatim in
+a real migration: the deleted controller's purchase callback was the ONLY caller of a backend
+subscription-sync POST (`syncSubscriptionWithBackend` → server route gating all premium features)
+and the only Singular trial-started tracking call.
+
+Before deleting the controller/delegates, list every statement inside purchase & restore success
+paths and reroute each into a `SuperwallDelegate`:
+
+```swift
+class AppSuperwallDelegate: SuperwallDelegate {
+  func handleSuperwallEvent(withInfo info: SuperwallEventInfo) {
+    switch info.event {
+    case .transactionComplete(_, let product, _, _):
+      syncSubscriptionWithBackend()                    // backend gate stays alive
+      Analytics.trackPurchase(product.productIdentifier) // Singular/PostHog/TikTok/…
+    case .transactionRestore:
+      syncSubscriptionWithBackend()
+    default: break
+    }
+  }
+}
+// Superwall.shared.delegate = AppSuperwallDelegate() — retain it; set right after configure.
+```
+
+- **Backend-gated apps:** if the server checks its own subscription record before unlocking
+  features, a device-side purchase that never notifies the server = paying users locked out.
+  Keep the sync (delegate POST above) or move gating to Superwall entitlements — and VERIFY the
+  backend route accepts the new payload (legacy routes often expect provider-specific ids like an
+  RC app-user-id).
+- **Analytics/attribution parity:** every event the old callbacks emitted (trial started, purchase,
+  restore) must fire from the delegate, or configure the equivalent dashboard integration
+  (Settings → Integrations) and verify events arrive before removing the client-side calls.
 
 ### PAYWALLS-ONLY mode — iOS `PurchaseController` (verbatim from docs)
 ```swift
@@ -294,6 +360,15 @@ migration from RevenueCat is coming soon but not yet available.)
 - **Cache during switchover.** Right after swapping SDKs, status may read `.unknown`/`.inactive` until the first `customerInfoStream`/StoreKit sync — prompt Restore Purchases if a known subscriber looks free.
 - **SK1 vs SK2.** The iOS controller expects a SK2 product (`product.sk2Product`); don't force Superwall to StoreKit 1 via `SuperwallOption`, or `purchase(product:)` gets no SK2 product.
 - **identify order.** Call `identify` before `setUserAttributes`, or attributes attach to an anonymous user.
+- **Deleted side-effects.** Removing a `PurchaseController` deletes everything inside it — backend
+  subscription sync, analytics, attribution. Builds stay green; production breaks. Reroute via
+  `SuperwallDelegate` FIRST (§5 "Side-effects").
+- **Identity leakage.** No `reset()` on logout/account-deletion/401 paths → next user inherits the
+  previous user's identity and sticky paywall assignments.
+- **Stranded navigation.** `register` without a feature closure on a gating placement → holdout /
+  skipped users tap the button and nothing happens. Gate navigation IN the closure.
+- **Duplicate configure.** Hybrid apps often already call `configure` in a wrapper manager; adding
+  another in AppDelegate double-configures.
 
 ## 9. Deeper docs (fetch live)
 

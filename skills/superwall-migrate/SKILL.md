@@ -63,6 +63,37 @@ If more than one is present, migrate the one that owns purchases; treat the othe
 5. **Verify** — build, present each placement, confirm existing subscribers are recognized
    (Restore Purchases), then remove the old SDK only in FULL mode.
 
+## Real-app seams — where migrations break in production (do ALL of these, every provider)
+
+Mechanical SDK swaps pass builds and still break real apps. Before deleting ANY provider code:
+
+- **Inventory side-effects inside the old purchase/restore callbacks BEFORE deleting them.** Real
+  apps hide critical work there: backend subscription-sync POSTs, analytics events (Singular /
+  PostHog / TikTok / Firebase / Adjust), attribution, referral crediting, cache refreshes,
+  post-purchase navigation. Every one must be rerouted — usually into a `SuperwallDelegate`
+  (`transactionComplete`, `transactionRestore`, `subscriptionStatusDidChange`) — never silently
+  dropped. If the app's BACKEND gates features via its own subscription check, purchases MUST still
+  notify that backend (delegate-driven POST or Superwall webhooks) and the endpoint must be verified
+  to accept the new flow — old routes often expect provider-specific ids.
+- **Identity lifecycle, both directions.** `identify(userId:)` at login/session-restore BEFORE any
+  placement can fire; `Superwall.shared.reset()` on EVERY sign-out path — explicit logout, account
+  deletion, forced auth-failure (401) logout. Grep them all; a missed path leaks one user's identity
+  and paywall assignments to the next.
+- **Inventory ALL purchase stacks, not just the named provider.** Grep for SwiftyStoreKit,
+  `SKPaymentQueue`, raw StoreKit/Play Billing helpers, `IAPManager`-style singletons. Two
+  transaction finishers = ambiguous purchase ownership; remove or explicitly retire each legacy path.
+- **One configure only.** Grep for existing Superwall wrapper/manager classes before adding a
+  `configure` call — apps that already had Superwall for paywalls often configure it in a wrapper;
+  a second configure call is a bug.
+- **Feature closures on gating placements.** Any `register` that gates navigation must put the
+  navigation in the feature closure so holdout / skipped / non-gated paths still proceed — never
+  assume the paywall presents.
+- **Dashboard hard gate.** Before creating ANY dashboard resource, confirm `superwall apps list
+  --json` contains the app whose `public_api_key` matches the key in code (or bundle id matches).
+  Wrong account → STOP dashboard work loudly, record it as incomplete in the handback, tell the
+  user to `superwall login` with the owning account. Never create resources in an unrelated project,
+  and never report the migration complete with dashboard work silently skipped.
+
 ## Three modes — decide who owns purchases first (this is about billing ownership, not what migrates)
 
 Removing the provider is not the whole decision: something still has to purchase, restore, and
