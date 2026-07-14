@@ -43,6 +43,11 @@ export function runPrintSkill(actionId: ActionId): (argv: Arguments) => Promise<
     let reference: string | undefined;
     let withStrategy = false;
     switch (actionId) {
+      case "review":
+      case "review-fix":
+        skill = "superwall-review";
+        reference = frameworkRef;
+        break;
       case "placements-review":
       case "placements-implement":
         skill = "superwall-placements";

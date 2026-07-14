@@ -243,7 +243,11 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   }
 
   const priorReport =
-    action.id === "placements-implement" ? loadReport(app.path, "placements-review") : undefined;
+    action.id === "review-fix"
+      ? loadReport(app.path, "review")
+      : action.id === "placements-implement"
+        ? loadReport(app.path, "placements-review")
+        : undefined;
   const actionCtx: ActionContext = { app, apiKey, existing, priorReport };
 
   if (dryRun) {
@@ -386,7 +390,7 @@ async function chooseAction(
   const sel = await ui.select({
     message: "What do you want to do?",
     options: available.map((a) => ({ value: a.id, label: a.title, hint: a.hint })),
-    initialValue: "placements-review",
+    initialValue: "review",
   });
   return sel as ActionId | null;
 }
@@ -546,7 +550,6 @@ function finish(action: WizardAction): void {
       "Set up the dashboard (campaign + paywall) so the placement presents something.",
       "Verify on device for placement 'campaign_trigger'.",
     ],
-    "placements-review": ["Run 'Implement placements' to act on the findings."],
     "placements-implement": ["Set up the dashboard so the new placements present paywalls."],
     "dashboard-setup": ["Design the paywall and attach products in the dashboard.", "Verify on device."],
   };

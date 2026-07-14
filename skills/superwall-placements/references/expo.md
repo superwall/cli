@@ -115,12 +115,14 @@ function AddProjectButton({ count, freeLimit }: { count: number; freeLimit: numb
 ## Audit checklist
 
 - Find every call: `grep -rn "registerPlacement\|usePlacement" app/ src/`.
-- Paywalled work is passed as `feature`, not run after the `await` unconditionally.
-- No manual subscription-status `if` wrapping the register call — register always,
-  let gating decide.
-- Names are `snake_case`, stable, non-duplicated, and match dashboard campaigns.
-- Cross-check with `superwall campaigns list --json`: every registered placement is
-  on a campaign; flag campaign placements never registered and vice versa.
+- When a placement intentionally controls access, paywalled work is passed as
+  `feature` rather than run after the `await` unconditionally.
+- No outer subscription branch should prevent an intentionally remote gate from
+  using its feature callback. Status reads elsewhere are valid and require context.
+- Names are stable and match presenting campaigns exactly; preserve intentional
+  analytics taxonomies and never rename for style alone.
+- Cross-check placements expected to present now with `superwall campaigns list
+  --json`; analytics-only, future, and paused placements may be unrouted.
 - `usePlacement` is only called inside components under `SuperwallProvider`.
 - Obvious premium boundaries (upgrade buttons, gated actions, quota limits,
   onboarding end) with no placement.
@@ -145,8 +147,8 @@ superwall campaigns placement <campaignId> unlock_export
   `SuperwallProvider` ancestor; otherwise it won't be configured.
 - **Re-creating callbacks noisily.** The `callbacks` object is fine to inline, but
   put stable logic in named functions to avoid confusion when auditing.
-- **Gating twice.** Don't combine a manual entitlement check with `feature` — it
-  double-gates and breaks Non-Gated experiments.
+- **Conflicting gates.** An outer entitlement check is a problem only when the same
+  action is intentionally controlled by the placement's feature callback.
 
 ## Deeper docs
 

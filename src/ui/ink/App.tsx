@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Static, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
+import { wrapReportLine } from "../log";
 import { THEME } from "../theme";
 import type { ListItem } from "../types";
 import {
@@ -60,14 +61,14 @@ function Inline({ line }: { line: string }): React.ReactElement {
 }
 
 function ReportBlock({ text }: { text: string }): React.ReactElement {
+  const width = Math.max(20, (process.stdout.columns ?? 80) - 2);
+  const lines = text.split("\n").flatMap((line) => wrapReportLine(line, width));
   return (
     <Box flexDirection="column">
-      {text.split("\n").map((line, i) => (
+      {lines.map((line, i) => (
         <Box key={i}>
           <Text dimColor>│ </Text>
-          <Box flexGrow={1}>
-            <Inline line={line} />
-          </Box>
+          <Text>{line}</Text>
         </Box>
       ))}
     </Box>

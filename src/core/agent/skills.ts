@@ -5,6 +5,7 @@ import { spawnStream } from "./drivers/spawn";
 export type BundledSkillId =
   | "superwall-integrate"
   | "superwall-migrate"
+  | "superwall-review"
   | "superwall-placements"
   | "superwall-dashboard";
 

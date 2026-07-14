@@ -122,14 +122,15 @@ func addProject() {
 
 - Find every call: `grep -rn "register(placement:" Sources/ App/` (also older
   `Superwall.shared.track` if migrating).
-- Each placement sits at a real premium boundary; the paywalled work is **inside**
-  the `feature` closure, not after the call.
-- No manual `if Superwall.shared.subscriptionStatus == .active { … } else { register }`
-  wrapper — that fights remote config. Register unconditionally; let gating decide.
-- Names are `snake_case`, stable, non-duplicated, and match dashboard campaigns.
-- Cross-check code vs dashboard with `superwall campaigns list --json`: every
-  registered placement is on a campaign; flag campaign placements never registered
-  in code and code placements on no campaign.
+- When a placement intentionally controls access, the paywalled work is **inside**
+  the `feature` closure rather than after the call.
+- No outer subscription branch should prevent an intentionally remote gate from
+  using its feature closure. Subscription reads elsewhere are valid and require
+  context.
+- Names are stable and match presenting campaigns exactly; preserve intentional
+  analytics taxonomies and never rename for style alone.
+- Cross-check placements expected to present now with `superwall campaigns list
+  --json`; analytics-only, future, and paused placements may be unrouted.
 - Obvious premium entry points (upgrade buttons, gated exports, quota limits,
   onboarding end) that have **no** placement.
 
@@ -150,8 +151,8 @@ superwall campaigns placement <campaignId> unlock_export
   a button action or `.onAppear`/`.task`.
 - **Registering before `configure`.** Calls before `Superwall.configure(apiKey:)`
   (typically in `App.init` / `AppDelegate`) are dropped. Configure first.
-- **Gating twice.** Wrapping `register` in your own entitlement check double-gates
-  and defeats Non-Gated experiments.
+- **Conflicting gates.** An outer entitlement check is a problem only when the same
+  action is intentionally controlled by the placement's feature closure.
 - **Waiting on the closure to fire.** The `feature` closure may run async (after a
   purchase). Don't assume it runs synchronously before the next line.
 

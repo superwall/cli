@@ -46,7 +46,7 @@ function printHelp(): void {
       head("Workflow commands"),
       row("integrate", "Set up Superwall in your app (agent-driven)"),
       row("migrate", "Migrate from RevenueCat / Adapty / Qonversion"),
-      row("review [--fix]", "Review placements & campaign coverage; --fix implements"),
+      row("review [--fix]", "Audit an existing Superwall setup; --fix repairs issues"),
       pc.dim("                                  Each takes --skill to print the playbook instead of running."),
       "",
       head("Resource commands"),
@@ -117,16 +117,16 @@ export function run(): void {
     )
     .command(
       "review",
-      "Review your Superwall setup — placements, gates, campaign coverage",
+      "Review an existing Superwall setup end to end",
       (y) =>
         y.options({
           ...installDirOption,
           ...dryRunOption,
           ...skillOption,
-          fix: { type: "boolean", describe: "Act on the findings: implement the missing placements" },
+          fix: { type: "boolean", describe: "Apply verified, safe fixes from the latest review" },
         }),
       (argv) => {
-        const id = argv.fix ? "placements-implement" : "placements-review";
+        const id = argv.fix ? "review-fix" : "review";
         if (argv.skill) return void import("@/commands/print-skill").then((m) => m.runPrintSkill(id)(argv));
         void import("@/commands/integrate").then((m) => m.runActionCommand(id)(argv));
       },

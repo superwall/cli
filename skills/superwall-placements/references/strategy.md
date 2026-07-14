@@ -3,8 +3,8 @@
 This is the framework-agnostic strategy guide: **where** to put placements and
 **why**. Read this first, then read your framework's reference (`ios.md`,
 `expo.md`, `react-native.md`, `flutter.md`) for the exact API. The API is the
-easy part. Deciding what to instrument, and refusing to gate in code, is the
-craft that makes an app's monetization flexible.
+easy part. Deciding what to instrument and which actions should remain remotely
+gateable is the craft that makes an app's monetization flexible.
 
 Most of section 1 (register everything, gate remotely) is stated in the Superwall
 docs. Sections 2–4 and 6 are **recommended practice** — craft distilled from how
@@ -35,11 +35,10 @@ Why this matters:
   A/B test — all without a release. That only works if the placement already
   exists in the binary.
 
-### The one rule you must not break: never gate by checking subscription status in code
+### Keep intentionally remote gates inside the registration callback
 
-When a placement *should* decide access, do **not** wrap it in a hand-rolled
-`if subscribed { … } else { showPaywall() }`. This is the single most common and
-most damaging mistake.
+When a placement is intentionally responsible for deciding access, do not wrap it
+in a hand-rolled `if subscribed { … } else { showPaywall() }`.
 
 ```
 // WRONG — freezes your monetization logic into this app release
@@ -55,7 +54,7 @@ register(placement: "start_workout") {
 }
 ```
 
-Why the code-side check is a trap:
+Why that split gate is a trap:
 
 - **Subscribed/entitled users are filtered automatically.** When you register a
   placement, Superwall evaluates subscription state itself: an entitled user's
@@ -68,29 +67,29 @@ Why the code-side check is a trap:
 - **It double-gates.** Your `if` plus the paywall's own gating means even a
   Non-Gated experiment can't let users through. It silently breaks experiments.
 
-**The one legitimate reason to read subscription state in code is UI, never
-gating.** To show a lock icon or a "PRO" badge without presenting a paywall, use
-`getPresentationResult(forPlacement:)` (all SDKs) — it tells you what *would*
-happen (`.paywall`, `.holdout`, `.noAudienceMatch`, `.placementNotFound`) so the
-UI can adapt. The access decision still flows through `register`.
+**Do not turn this into a ban on subscription-state reads.** Superwall documents
+subscription status and entitlements for app state and UI, and an app may have
+deliberate access rules outside a placement. Flag a code-side check only when the
+same action is meant to be remotely gated and the check demonstrably prevents the
+campaign or feature callback from controlling it. For paywall-specific UI, use
+`getPresentationResult` to see what would happen without presenting.
 
-## 2. The core set every app should register
+## 2. Common placement candidates
 
-Start here regardless of app type. Each is a distinct user *moment*, named for the
-moment, not the button.
+Use these as prompts, not requirements. Select the moments that fit the app's real
+product and monetization model, named for the moment rather than the button.
 
 | Placement | Fires when | Why it's core |
 |---|---|---|
-| `onboarding_complete` | User finishes onboarding | Highest-intent moment in most apps — they've invested setup effort and seen the value prop. The single most important paywall slot; often the top revenue driver. |
+| `onboarding_complete` | User finishes onboarding | A common high-intent moment when the app has a meaningful onboarding flow. |
 | one per premium feature gate | User taps a paid feature (`unlock_export`, `start_workout`, `remove_watermark`) | The direct "I want this paid thing" signal. `verb_noun`. One per distinct feature, not one per button that reaches it. |
 | a limit/quota-reached moment | Free allowance exhausted (`hit_export_limit`, `scan_limit_reached`) | Catches users at peak demonstrated need. Distinct from the feature gate — the user already used it free and wants more. |
 | `upgrade_tapped` | User taps an explicit "Go Pro" / upgrade entry in settings or a banner | Self-selected high intent. Route to your fullest paywall. |
 | `app_launch` / `session_start` | Cold launch / new session (both are auto-registered standard placements) | Broad-reach surface for win-back or a hard gate on relaunch. Usually left **campaign-off** until you deliberately want it — powerful but blunt. |
 | a win-back / discount surface | User declines, churns, or hits a re-engagement point | Where you route a discounted offer. Often driven by standard placements like `paywall_decline` or `transaction_abandon`. |
 
-Note the last two: register them so the lever exists, but leave them unrouted
-(no campaign, or campaign paused) until you have a reason to fire them. That's the
-whole point — the instrumentation is cheap; the decision is remote.
+The last two may remain unrouted until there is a deliberate reason to present.
+That is valid: instrumentation can exist before campaign strategy.
 
 Superwall also **auto-registers** standard placements you can route without any
 code: `app_install`, `app_launch`, `session_start`, `deepLink_open`,
@@ -130,21 +129,23 @@ the placements that exist — start from the money.
 3. **Then flag the four failure modes:**
    - **Surface with no placement** → missed revenue. A paid feature you can never
      attach a paywall to without an app update. The highest-value finding.
-   - **Placement with no campaign** → dead instrumentation. Cross-check every
-     registered name against `superwall campaigns list --json`. A placement not on
-     any campaign fires nothing — either route it or it's noise.
-   - **Code-side entitlement check that should be a placement** → grep for
+   - **Expected presenter with no campaign** → presentation gap. Cross-check the
+     registered names that are supposed to show or gate now against `superwall
+     campaigns list --json`. Analytics-only, future, and intentionally paused
+     placements may be unrouted without being noise.
+   - **Conflicting code-side entitlement check** → grep for
      subscription/entitlement reads at call sites (`subscriptionStatus`,
      `hasActiveSubscription`, `getEntitlements`, `CustomerInfo`, `isPro`). Any that
-     gate a feature by branching in code should be a `register` with the work in
-     `feature` instead. (Reads that only drive a lock icon via
-     `getPresentationResult` are fine.)
+     gate the same action that Superwall is intended to control may belong inside
+     `feature`. Reads that drive UI/app state or deliberate non-placement access
+     rules are valid and must not be reported from grep alone.
    - **Naming drift / typos** → `Start_Workout` vs `start_workout`, `unlockExport`
      vs `unlock_export`, singular/plural drift. A typo means the campaign silently
      never matches. Also flag campaign placements that nothing in code registers.
 
 Report findings as: surface → expected placement → status (present / missing /
-dead / code-gated / misnamed).
+unrouted-but-expected / conflicting gate / misnamed). Keep analytics/future
+instrumentation out of the issue list.
 
 ## 5. Gate depth: hard gate vs soft gate
 
@@ -173,27 +174,20 @@ call unconditionally, you've made it non-gated in code and can never harden it.
 
 ## 6. How many placements?
 
-A well-instrumented app typically runs roughly **5–15 placements**. That's a
-guideline for calibration, not a limit.
+There is no healthy universal count. A broad analytics bridge may intentionally
+produce many placement names, while a focused app may have only a few dedicated
+monetization placements. Judge clarity and usefulness, not totals.
 
-- **Too few (1–3)** → no experimentation surface. You can only monetize the two or
-  three moments you thought of at build time; everything else needs a release.
-- **Placement-per-button spam (30+)** → noise. Ten placements that all mean "user
-  tapped something in the editor" dilute your data and make campaigns unreadable.
-
-**Quality bar: each placement is a DISTINCT user intent.** If two placements would
-always be routed to the same paywall for the same reason, they're one placement.
-If a single placement fires from three unrelated moments, it's probably three. Use
-`params` to distinguish *variants* of one intent (`{ source: "toolbar" }` vs
-`{ source: "menu" }`) rather than minting a new placement per source.
+For dedicated monetization keys, each should express a distinct moment. Use
+`params` to distinguish variants (`{ source: "toolbar" }` vs `{ source: "menu" }`)
+when they share campaign intent. Do not collapse an intentional analytics taxonomy
+just to make the placement list shorter.
 
 ## 7. Naming rules
 
-- **`snake_case`, and pick one convention for the whole app.** The house style for
-  this skill is `snake_case` (`unlock_export`, `onboarding_complete`). Superwall's
-  own docs examples use mixed casing (`StartWorkout`, `caffeineLogged`) — the SDK
-  doesn't enforce a style, so the real rule is *one consistent convention*, and we
-  standardize on `snake_case`.
+- **Preserve the app's established taxonomy.** The SDK does not enforce casing,
+  and the docs use multiple styles. `snake_case` is a reasonable choice for new
+  dedicated keys, but analytics bridges should retain their existing event names.
 - **Name the user moment, not the UI widget.** `unlock_export`, not
   `export_button_tapped`; `hit_export_limit`, not `alert_shown`. The widget can
   change; the intent is stable.
@@ -204,14 +198,17 @@ If a single placement fires from three unrelated moments, it's probably three. U
   campaign. Renaming it silently breaks routing — the campaign keeps looking for
   the old name and the new one fires nothing. Treat renames as breaking changes:
   add the new campaign mapping before shipping the rename, or don't rename.
+- **Never rename for style alone.** Consistency is not worth breaking campaign
+  routing or historical analytics.
 - **Reuse, never duplicate.** Before adding a name, check existing placements
   (`superwall campaigns list --json`) and existing `register` calls. Two names for
   one intent split your data and double your campaign work.
 
-## Dashboard routing (placements are inert without a campaign)
+## Dashboard routing (required for presentation, not instrumentation)
 
-A registered placement does nothing until a campaign routes it. Campaigns hold
-one or more placements and use audience filters to decide what each user sees.
+A registered placement does not present a paywall until a campaign routes it.
+Campaigns hold one or more placements and use audience filters to decide what each
+user sees. Analytics-only or future placements can remain unrouted intentionally.
 
 ```bash
 superwall campaigns list --json                                  # existing campaigns + placements

@@ -41,7 +41,7 @@ Onboarding (agent-driven):
 | --- | --- |
 | `superwall` | Shows help. |
 | `superwall integrate` (alias `wizard`) | Full pipeline: SDK → products → campaigns & placements → paywall → verify. |
-| `superwall review [--fix]` | Audit placements & campaign coverage; `--fix` implements the findings. |
+| `superwall review [--fix]` | Audit an existing setup end to end; `--fix` applies verified, safe fixes. |
 | `superwall migrate` | Migrate from RevenueCat / Adapty / Qonversion. |
 
 Every workflow above also takes `--skill`: instead of the CLI orchestrating an
@@ -105,6 +105,8 @@ Agent-facing expertise is split across two homes by breadth:
     (`ios.md`, `expo.md`, `react-native.md`, `flutter.md`).
   - **`superwall-migrate`** — SDK migration off RevenueCat/Adapty/Qonversion,
     per-provider references.
+  - **`superwall-review`** — existing-setup audit across SDK configuration,
+    purchasing, identity, deep links, Web Checkout, placements, and dashboard state.
   - **`superwall-placements`** — placement strategy, implementation + audit.
   - **`superwall-dashboard`** — campaigns/products/entitlements setup via the CLI.
 
@@ -137,6 +139,7 @@ prompts/                 harness protocol — XML templates with {{var}} slots
 skills/                  internal workflow skills: SKILL.md + references/ per skill
   superwall-integrate/   references/{ios,expo,react-native,flutter}.md
   superwall-migrate/     references/{revenuecat,adapty,qonversion}.md
+  superwall-review/      references/{ios,expo,react-native,flutter}.md
   superwall-placements/  references/{strategy,ios,expo,react-native,flutter}.md
   superwall-dashboard/   campaigns/products/entitlements setup via the CLI
 src/

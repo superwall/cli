@@ -17,7 +17,14 @@ const PROVIDER_REF: Record<string, string> = {
   qonversion: "qonversion",
 };
 
-export type ActionId = "integrate" | "placements-review" | "placements-implement" | "dashboard-setup" | "migrate";
+export type ActionId =
+  | "integrate"
+  | "review"
+  | "review-fix"
+  | "placements-review"
+  | "placements-implement"
+  | "dashboard-setup"
+  | "migrate";
 
 export interface ActionContext {
   app: DetectedApp;
@@ -67,6 +74,37 @@ export const ACTIONS: WizardAction[] = [
     allowedTools: EDIT_TOOLS,
     vars: (ctx) => ({
       skill: loadBundledSkill("superwall-integrate", FRAMEWORK_REF[ctx.app.framework.integration]),
+    }),
+  },
+  {
+    id: "review",
+    title: "Review the setup",
+    hint: "Audit the SDK, purchasing, identity, deep links, placements & dashboard",
+    runningLabel: "Reviewing your Superwall setup",
+    successLabel: "Setup review complete",
+    requiresIntegration: true,
+    requiresOrgKey: false,
+    outputMode: "report",
+    readOnly: true,
+    allowedTools: READ_TOOLS,
+    vars: (ctx) => ({
+      skill: loadBundledSkill("superwall-review", FRAMEWORK_REF[ctx.app.framework.integration]),
+    }),
+  },
+  {
+    id: "review-fix",
+    title: "Fix setup issues",
+    hint: "Apply verified, safe fixes from the setup review",
+    runningLabel: "Fixing your Superwall setup",
+    successLabel: "Setup fixes complete",
+    requiresIntegration: true,
+    requiresOrgKey: false,
+    outputMode: "silent",
+    readOnly: false,
+    allowedTools: EDIT_TOOLS,
+    vars: (ctx) => ({
+      prior_report: ctx.priorReport ?? "",
+      skill: loadBundledSkill("superwall-review", FRAMEWORK_REF[ctx.app.framework.integration]),
     }),
   },
   {
