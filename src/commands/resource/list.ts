@@ -65,7 +65,7 @@ export async function list(
           })),
         })),
         empty:
-          "No projects yet — run `superwall apps create <name> --platform ios`.",
+          "No projects yet - run `superwall apps create <name> --platform ios`.",
       }),
     );
     return;
@@ -133,6 +133,46 @@ export async function useApp(
   context.ui.success(
     `Default app set to \`${app.name ?? app.id}\` (${platformLabel(app.platform)})`,
   );
+}
+
+export async function useOrg(
+  context: CommandContext,
+  api: SuperwallApi,
+): Promise<void> {
+  const organizations = await apiCall(context, "Loading organizations", () =>
+    listOrganizations(api),
+  );
+  if (organizations.length === 0) {
+    throw new Error("Your account has no organizations.");
+  }
+
+  const target = context.argv.value as string | undefined;
+  let org;
+  if (target) {
+    org = organizations.find(
+      (candidate) =>
+        String(candidate.id) === target || rowName(candidate) === target,
+    );
+    if (!org) throw new Error(`No organization ${target}.`);
+  } else if (!context.interactive) {
+    throw new Error("Specify an organization: superwall orgs use <id|name>");
+  } else {
+    const sel = await context.ui.select({
+      message: "Which organization?",
+      options: organizations.map((candidate) => ({
+        value: String(candidate.id),
+        label: rowName(candidate),
+        hint: titleCase(String(candidate.role ?? "")),
+      })),
+      initialValue: api.org.id,
+    });
+    if (sel === null) return;
+    org = organizations.find((candidate) => String(candidate.id) === sel)!;
+  }
+
+  api.setOrg({ id: String(org.id), name: rowName(org) });
+  if (context.json) return context.output.data(org);
+  context.ui.success(`Organization set to \`${rowName(org)}\`.`);
 }
 
 function secondaryId(label: string, id: unknown): string | undefined {

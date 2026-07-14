@@ -5,7 +5,6 @@ import { scanProject, type DetectedApp } from "@/core/project/scan";
 import type { ExistingIntegration } from "@/core/project/existing";
 import { performLogin } from "@/core/auth/login";
 import type { Session } from "@/core/auth/storage";
-import { titleCase } from "@/core/api/resources";
 import { getHostedStatus } from "@/core/agent/hosted";
 import type { AgentDriver } from "@/core/agent/drivers";
 import { ACTIONS, type ActionId } from "@/core/agent/actions";
@@ -15,32 +14,17 @@ export async function performLoginWithUi(): Promise<Session | null> {
   try {
     const session = await performLogin({
       onVerify: ({ url, userCode }) => {
-        ui.note(
-          `If your browser didn't open, visit:\n\n${url}\n\nand enter the code  \`${userCode}\``,
-          "Approve in your browser",
+        ui.info(
+          `Approve this login in your browser · code \`${userCode}\`\n${url}`,
         );
-        spin.start("Signing you in");
+        spin.start("Waiting for you to approve in the browser");
       },
       onStatus: (message) => spin.message(message),
-      onSelectOrg: async (orgs) => {
-        const selection = await ui.select({
-          message: "Which organization?",
-          options: orgs.map((org) => ({
-            value: String(org.id),
-            label: org.name,
-            hint: titleCase(org.role),
-          })),
-        });
-        spin.start("Setting things up");
-        return selection === null
-          ? null
-          : (orgs.find((org) => String(org.id) === selection) ?? null);
-      },
     });
-    spin.stop(`Signed in as ${session.userEmail ?? "you"}`);
+    spin.stop(`Logged in as \`${session.userEmail ?? "you"}\``);
     return session;
   } catch (error) {
-    spin.stop("Sign-in failed");
+    spin.stop("Login failed");
     ui.warn((error as Error).message);
     return null;
   }
@@ -87,10 +71,10 @@ export async function pickApp(
     scanProject(installDir),
   );
   if (scan.apps.length === 0) {
-    if (scan.comingSoon.length) {
-      const webApp = scan.comingSoon[0]!;
+    if (scan.unsupported.length) {
+      const webApp = scan.unsupported[0]!;
       throw new Error(
-        `Detected a web app${webApp.details ? ` (\`${webApp.details}\`)` : ""} — Superwall web support is coming soon.`,
+        `Detected a web app${webApp.details ? ` (\`${webApp.details}\`)` : ""}. This command supports mobile apps.`,
       );
     }
     const skipped = scan.skipped.length
@@ -100,9 +84,9 @@ export async function pickApp(
       `No ${SUPPORTED_LABEL} app found in this directory.${skipped}`,
     );
   }
-  if (scan.comingSoon.length) {
+  if (scan.unsupported.length) {
     ui.info(
-      `Also found (web — coming soon): ${scan.comingSoon.map((app) => app.name).join(", ")}`,
+      `Also found unsupported web apps: ${scan.unsupported.map((app) => app.name).join(", ")}`,
     );
   }
   if (scan.apps.length === 1) {
@@ -121,7 +105,7 @@ export async function pickApp(
   }
   const choice = await ui.select({
     message: scan.isMonorepo
-      ? "Found multiple apps — which one?"
+      ? "Found multiple apps - which one?"
       : "Which app?",
     options: scan.apps.map((app) => ({
       value: app.path,
@@ -152,7 +136,7 @@ export async function chooseAction(
       return null;
     }
     if (!confirmed) {
-      ui.outro("No problem — run `superwall integrate` again anytime.");
+      ui.outro("No problem - run `superwall integrate` again anytime.");
       return null;
     }
     return "integrate";

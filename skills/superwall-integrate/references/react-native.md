@@ -1,10 +1,10 @@
-# Integrate Superwall — React Native (bare, non-Expo)
+# Integrate Superwall - React Native (bare, non-Expo)
 
 You are integrating Superwall into a **bare** React Native app (no Expo config).
-Get the SDK installed and configured. **Do not add paywall triggers** — that is the
+Get the SDK installed and configured. **Do not add paywall triggers** - that is the
 separate **superwall-placements** skill.
 
-> **Important — which SDK:** Superwall's recommended SDK for React Native is now
+> **Important - which SDK:** Superwall's recommended SDK for React Native is now
 > **`expo-superwall`**, installed into bare RN via Expo modules (**Path A**). The
 > standalone **`@superwall/react-native-superwall`** is **deprecated** (**Path B**,
 > kept only for existing setups). Default to Path A. Use Path B only if the project
@@ -16,16 +16,16 @@ target **15.1+**, Android **minSdkVersion 21+**.
 ## Checklist
 
 - [ ] **0. Decide the purchase-handling path** (default / RevenueCat / custom).
-- [ ] **0b. Pick the SDK** — Path A (`expo-superwall`, default) or Path B (legacy).
+- [ ] **0b. Pick the SDK** - Path A (`expo-superwall`, default) or Path B (legacy).
 - [ ] **1. Install** the SDK + native deps (pods / gradle).
 - [ ] **2. Configure** at launch with per-platform `pk_` keys.
 - [ ] **3. API keys** branched on platform (public keys, never secrets).
 - [ ] **4. Purchase handling** for the chosen path.
-- [ ] **5. Native rebuild** (not just a Metro reload) — module links.
-- [ ] **6. Run** — native logs show Superwall startup.
+- [ ] **5. Native rebuild** (not just a Metro reload) - module links.
+- [ ] **6. Run** - native logs show Superwall startup.
 - [ ] **7. Post-integration** (identity, attributes, subscription state, deep links, analytics), then → **superwall-placements**.
 
-## Docs access — read the current page when baked steps aren't enough
+## Docs access - read the current page when baked steps aren't enough
 
 ```bash
 curl -sL https://superwall.com/docs/expo/llms.txt          # Path A docs (expo-superwall) live here
@@ -35,7 +35,7 @@ curl -sL https://superwall.com/docs/expo/guides/using-expo-sdk-in-bare-react-nat
 ```
 
 Pattern: fetch the index, then `https://superwall.com/docs/{sdk}/{path}.md`. Every
-`curl` here is verified working. **Path A uses the Expo docs** — the hooks/provider
+`curl` here is verified working. **Path A uses the Expo docs** - the hooks/provider
 API (`SuperwallProvider`, `useUser`) is documented under `/docs/expo/…`. **Never
 invent an API**; fetch and confirm.
 
@@ -54,11 +54,11 @@ SDK reference.
 
 Path B reference: `curl -sL https://superwall.com/docs/react-native/llms.txt`
 
-## Step 0 — Purchase-handling path (decide first)
+## Step 0 - Purchase-handling path (decide first)
 
 > **Important:** Paths (b)/(c) require manual subscription-status management; (a) doesn't.
 
-- **(a) Default — Superwall handles StoreKit/Billing.** Recommended, zero purchase code.
+- **(a) Default - Superwall handles StoreKit/Billing.** Recommended, zero purchase code.
 - **(b) RevenueCat stays the source of truth.** Keep RC purchasing; sync entitlements in.
 - **(c) Custom purchase controller.** Supply a `PurchaseController`, drive status.
 
@@ -66,7 +66,7 @@ Full migration off another SDK → **superwall-migrate** skill.
 
 ---
 
-## Path A — `expo-superwall` in bare React Native (recommended)
+## Path A - `expo-superwall` in bare React Native (recommended)
 
 ### 1. Install
 
@@ -104,15 +104,15 @@ export default function App() {
   );
 }
 ```
-`SuperwallProvider` configures the SDK on mount — **do not** also call a separate
+`SuperwallProvider` configures the SDK on mount - **do not** also call a separate
 `configure()`. Optional behavior goes through the `options` prop.
 
 Path A shares the Expo API. Skip to **API key handling**, **Purchase handling**,
-**Post-integration** — they apply to both paths (Path A uses the hooks form).
+**Post-integration** - they apply to both paths (Path A uses the hooks form).
 
 ---
 
-## Path B — legacy `@superwall/react-native-superwall`
+## Path B - legacy `@superwall/react-native-superwall`
 
 Use only if you cannot add Expo modules, or the project already uses this SDK.
 
@@ -122,7 +122,7 @@ npm install @superwall/react-native-superwall
 # or: yarn add @superwall/react-native-superwall
 cd ios && pod install
 ```
-Android autolinks — no extra native step beyond a normal build.
+Android autolinks - no extra native step beyond a normal build.
 
 ### 2. Configure
 
@@ -150,20 +150,20 @@ Full signature: `Superwall.configure({ apiKey, options?, purchaseController?, co
 
 ## API key handling (both paths)
 
-Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys — iOS and
+Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys - iOS and
 Android apps have separate keys, so branch on platform. Public keys aren't secrets;
 inline them, or read from existing config (`react-native-config`). **Never** use a
 secret/server key.
 
-## Purchase handling (both paths — implements Step 0)
+## Purchase handling (both paths - implements Step 0)
 
 ### (a) Default
-Nothing extra — Superwall manages purchases, restores, and subscription status.
+Nothing extra - Superwall manages purchases, restores, and subscription status.
 
 ### (b) RevenueCat / (c) custom
 Subclass `PurchaseController` and implement `purchaseFromAppStore(productId)`,
 `purchaseFromGooglePlay(productId, basePlanId?, offerId?)`, `restorePurchases()`;
-pass it at configure time. Read the page first — **do not invent method names**:
+pass it at configure time. Read the page first - **do not invent method names**:
 ```bash
 curl -sL https://superwall.com/docs/expo/guides/advanced-configuration.md
 ```
@@ -187,7 +187,7 @@ export class MyPurchaseController extends PurchaseController {
 ## Verify (both paths)
 
 1. **Native rebuild** & run: `npx react-native run-ios` / `run-android`. Path A must
-   relink the native module — rebuild, don't just reload JS.
+   relink the native module - rebuild, don't just reload JS.
 2. Watch native logs on launch for Superwall SDK startup.
 3. iOS purchase testing: StoreKit testing in Xcode.
 
@@ -195,18 +195,18 @@ export class MyPurchaseController extends PurchaseController {
 
 Path A uses the `useUser` hook; Path B uses static `Superwall` methods.
 
-- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). Path A: `const { identify, signOut } = useUser()`. Path B:
+- **User identity - REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). Path A: `const { identify, signOut } = useUser()`. Path B:
   `Superwall.shared.identify(userId)` / `Superwall.shared.reset()`. `userId` should
   be a **UUID** (StoreKit compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/expo/quickstart/user-management.md`
-- **User attributes** — `setUserAttributes(...)`.
+- **User attributes** - `setUserAttributes(...)`.
   `curl -sL https://superwall.com/docs/expo/quickstart/setting-user-properties.md`
-- **Tracking subscription state** — Path A: `subscriptionStatus` from `useUser`
+- **Tracking subscription state** - Path A: `subscriptionStatus` from `useUser`
   (`status` = `"ACTIVE" | "INACTIVE" | "UNKNOWN"`).
   `curl -sL https://superwall.com/docs/expo/quickstart/tracking-subscription-state.md`
-- **Deep links** — pass URLs to `handleDeepLink`; fires the `deepLink_open` placement.
+- **Deep links** - pass URLs to `handleDeepLink`; fires the `deepLink_open` placement.
   `curl -sL https://superwall.com/docs/expo/guides/handling-deep-links.md`
-- **3rd-party analytics** — forward events (Path A: `useSuperwallEvents`).
+- **3rd-party analytics** - forward events (Path A: `useSuperwallEvents`).
   `curl -sL https://superwall.com/docs/expo/guides/3rd-party-analytics.md`
 
 ## Pitfalls

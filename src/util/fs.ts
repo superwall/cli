@@ -13,7 +13,9 @@ export function readPackageJson(dir: string): Record<string, unknown> | null {
   }
 }
 
-export function allDeps(pkg: Record<string, unknown> | null): Record<string, string> {
+export function allDeps(
+  pkg: Record<string, unknown> | null,
+): Record<string, string> {
   if (!pkg) return {};
   return {
     ...((pkg.dependencies as Record<string, string>) ?? {}),

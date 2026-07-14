@@ -8,7 +8,7 @@ import { scanProject } from "@/core/project/scan";
 import { detectBilling } from "@/core/project/billing";
 import { detectExisting } from "@/core/project/existing";
 import { loadSession } from "@/core/auth/storage";
-import { performLogin } from "@/core/auth/login";
+import { performLoginWithUi } from "./integrate/app";
 import { runAction } from "@/core/agent/run";
 import { saveReport } from "@/core/state/reports";
 import { actionById, type ActionContext } from "@/core/agent/actions";
@@ -48,7 +48,7 @@ export const runMigrate = defineCommand({
           : null;
     if (!provider) {
       ui.warn(
-        "No RevenueCat / Adapty / Qonversion detected — nothing to migrate.",
+        "No RevenueCat / Adapty / Qonversion detected - nothing to migrate.",
       );
       ui.info("Starting fresh? Run `superwall integrate` to set up directly.");
       ui.outro("");
@@ -59,7 +59,7 @@ export const runMigrate = defineCommand({
     let intent = "full";
     if (ctx.interactive && !dryRun) {
       const sel = await ui.select({
-        message: `Migrate from ${provider} — how far?`,
+        message: `Migrate from ${provider} - how far?`,
         options: [
           {
             value: "full",
@@ -80,31 +80,14 @@ export const runMigrate = defineCommand({
 
     // Log in so the agent's `superwall` CLI calls are authenticated.
     let session = loadSession();
-    if (!session && ctx.interactive && !dryRun) {
-      const spin = ui.spinner();
-      try {
-        session = await performLogin({
-          onVerify: ({ url, userCode }) => {
-            ui.note(
-              `If your browser didn't open, visit:\n\n${url}\n\nand enter the code  \`${userCode}\``,
-              "Approve in your browser",
-            );
-            spin.start("Waiting for you to approve in the browser");
-          },
-          onStatus: (m) => spin.message(m),
-        });
-        spin.stop("Logged in");
-      } catch (e) {
-        spin.stop("Login failed");
-        ui.warn((e as Error).message);
-      }
-    }
     if (session) {
       ui.success(
         `Logged in as \`${session.userEmail ?? "you"}\`${session.orgName ? ` · \`${session.orgName}\`` : ""}`,
       );
-      if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
+    } else if (ctx.interactive && !dryRun) {
+      session = await performLoginWithUi();
     }
+    if (session?.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
 
     const existing = detectExisting(app);
     const actionCtx: ActionContext = {
@@ -125,7 +108,7 @@ export const runMigrate = defineCommand({
         ].join("\n"),
         "Migration plan",
       );
-      ui.outro("Dry run — no changes made.");
+      ui.outro("Dry run - no changes made.");
       return;
     }
 

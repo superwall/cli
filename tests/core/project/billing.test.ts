@@ -8,7 +8,10 @@ import type { DetectedApp } from "@/core/project/scan";
 
 function appWithDeps(deps: Record<string, string>): DetectedApp {
   const dir = mkdtempSync(join(tmpdir(), "sw-billing-"));
-  writeFileSync(join(dir, "package.json"), JSON.stringify({ dependencies: deps }));
+  writeFileSync(
+    join(dir, "package.json"),
+    JSON.stringify({ dependencies: deps }),
+  );
   return { path: dir } as DetectedApp;
 }
 
@@ -19,8 +22,15 @@ test("detects RevenueCat from react-native-purchases", () => {
 });
 
 test("detects Adapty + Qonversion", () => {
-  assert.equal(detectBilling(appWithDeps({ "react-native-adapty": "2.0.0" })).adapty, true);
-  assert.equal(detectBilling(appWithDeps({ "react-native-qonversion": "8.0.0" })).qonversion, true);
+  assert.equal(
+    detectBilling(appWithDeps({ "react-native-adapty": "2.0.0" })).adapty,
+    true,
+  );
+  assert.equal(
+    detectBilling(appWithDeps({ "react-native-qonversion": "8.0.0" }))
+      .qonversion,
+    true,
+  );
 });
 
 test("no billing provider for a plain app", () => {

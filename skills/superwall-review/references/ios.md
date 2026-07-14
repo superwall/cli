@@ -1,4 +1,4 @@
-# Review Superwall — iOS / Swift
+# Review Superwall - iOS / Swift
 
 You are reviewing an existing iOS integration using `SuperwallKit`. Complete the
 whole checklist; placements are one part of it.

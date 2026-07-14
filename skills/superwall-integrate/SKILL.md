@@ -1,18 +1,18 @@
 ---
 name: superwall-integrate
-description: Install and configure the Superwall SDK in a mobile app for the first time — iOS/Swift (SwiftUI or UIKit), Expo, React Native (bare), or Flutter. Handles SDK install per package manager/build system, the single configure() call at launch, public API key handling, and correct purchase-handling setup. Use when adding Superwall to an app that does not yet have it; NOT for adding paywall triggers (that is the superwall-placements skill).
+description: Install and configure the Superwall SDK in a mobile app for the first time. Supports iOS with SwiftUI or UIKit, Expo, bare React Native, and Flutter. Covers package installation, one configure call at launch, public API key handling, and purchase setup. Use superwall-placements to add paywall triggers.
 ---
 
 # Integrate the Superwall SDK
 
 Get Superwall installed and configured with the smallest, cleanest set of edits.
-Placements (paywall triggers) are a **separate step** — do not add `register()` /
+Placements (paywall triggers) are a **separate step** - do not add `register()` /
 `registerPlacement()` calls or example "Go Premium" buttons here. After this skill
 succeeds, use the **superwall-placements** skill to add triggers.
 
 ## Docs access
 
-Superwall's docs are fetchable **as markdown** — always prefer fetching the current
+Superwall's docs are fetchable **as markdown** - always prefer fetching the current
 page over relying on memory:
 
 ```bash
@@ -21,10 +21,10 @@ curl -sL https://superwall.com/docs/llms-full.txt      # broad context across al
 curl -sL https://superwall.com/docs/{path}.md          # any page as markdown (append .md)
 ```
 
-Each SDK also has its own index — `curl -sL https://superwall.com/docs/{ios|expo|react-native|flutter}/llms.txt`.
+Each SDK also has its own index - `curl -sL https://superwall.com/docs/{ios|expo|react-native|flutter}/llms.txt`.
 Fetch the index to find the slug, then fetch `{path}.md`. Every reference file
 below embeds the exact `curl` at each step so you can pull current detail when the
-baked-in steps aren't enough. **Never invent an API** — if a symbol isn't in a
+baked-in steps aren't enough. **Never invent an API** - if a symbol isn't in a
 reference or a page you fetched, fetch and confirm.
 
 ## Principles
@@ -33,7 +33,7 @@ reference or a page you fetched, fetch and confirm.
   Don't refactor or reformat unrelated code.
 - **Read a file before editing it**; match its existing style and conventions.
 - **Detect the package manager / build system** from the project (lockfiles,
-  `Podfile`, `app.json`, `pubspec.yaml`, `Package.swift`) — never assume
+  `Podfile`, `app.json`, `pubspec.yaml`, `Package.swift`) - never assume
   npm/yarn/pnpm/bun/CocoaPods/SPM.
 - **Never invent an API key.** Use the exact public key you were given (it starts
   with `pk_`). Never commit a secret. The public key may be inlined where the
@@ -73,4 +73,4 @@ reference or a page you fetched, fetch and confirm.
 1. SDK installed and resolving (pods/SPM/gradle/pub resolved).
 2. Superwall configured exactly once at launch with the provided public `pk_` key.
 3. If a build command exists, build to verify it compiles.
-4. No placements added — that is the placements step.
+4. No placements added - that is the placements step.

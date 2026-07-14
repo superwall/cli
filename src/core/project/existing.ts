@@ -13,15 +13,24 @@ export interface ExistingIntegration {
 
 const JS_SDK_PACKAGES: Partial<Record<Integration, string[]>> = {
   [Integration.expo]: ["expo-superwall"],
-  [Integration.reactNative]: ["@superwall/react-native-superwall", "react-native-superwall"],
+  [Integration.reactNative]: [
+    "@superwall/react-native-superwall",
+    "react-native-superwall",
+  ],
   [Integration.web]: ["@superwall/web", "superwall-js"],
 };
 
 const PK_RE = /pk_[A-Za-z0-9._-]{6,}/;
-const CONFIGURE_RE = /Superwall\.(shared\.)?configure|configureSuperwall|SuperwallProvider|\.configure\(\s*apiKey/;
-const SDK_REF_RE = /Superwall-iOS|SuperwallKit|superwallkit_flutter|expo-superwall|superwall/i;
+const CONFIGURE_RE =
+  /Superwall\.(shared\.)?configure|configureSuperwall|SuperwallProvider|\.configure\(\s*apiKey/;
+const SDK_REF_RE =
+  /Superwall-iOS|SuperwallKit|superwallkit_flutter|expo-superwall|superwall/i;
 
-const SOURCE_GLOBS = ["**/*.{swift,ts,tsx,js,jsx,kt,dart}", "**/.env*", "**/*.xcconfig"];
+const SOURCE_GLOBS = [
+  "**/*.{swift,ts,tsx,js,jsx,kt,dart}",
+  "**/.env*",
+  "**/*.xcconfig",
+];
 const IGNORE = [
   "**/node_modules/**",
   "**/.git/**",
@@ -41,7 +50,13 @@ function sdkInstalledFor(app: DetectedApp): boolean {
     if (jsPkgs.some((p) => p in deps)) return true;
   }
   const manifests = fg.sync(
-    ["**/Package.resolved", "**/project.pbxproj", "**/Podfile", "**/pubspec.yaml", "**/pubspec.lock"],
+    [
+      "**/Package.resolved",
+      "**/project.pbxproj",
+      "**/Podfile",
+      "**/pubspec.yaml",
+      "**/pubspec.lock",
+    ],
     { cwd: app.path, ignore: IGNORE, absolute: true, deep: 5 },
   );
   for (const f of manifests) {

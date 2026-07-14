@@ -1,4 +1,4 @@
-# Superwall placement strategy — the playbook
+# Superwall placement strategy - the playbook
 
 This is the framework-agnostic strategy guide: **where** to put placements and
 **why**. Read this first, then read your framework's reference (`ios.md`,
@@ -7,7 +7,7 @@ easy part. Deciding what to instrument and which actions should remain remotely
 gateable is the craft that makes an app's monetization flexible.
 
 Most of section 1 (register everything, gate remotely) is stated in the Superwall
-docs. Sections 2–4 and 6 are **recommended practice** — craft distilled from how
+docs. Sections 2-4 and 6 are **recommended practice** - craft distilled from how
 well-instrumented apps are built, not verbatim doc rules. They're written as
 imperatives because they're what you should do, not because a doc mandates them.
 
@@ -16,10 +16,10 @@ imperatives because they're what you should do, not because a doc mandates them.
 **Register every potentially-monetizable moment. The campaign decides what
 happens.** A placement is a named event you fire at a boundary; whether it shows a
 paywall, gates a feature, enters a holdout, or does nothing is decided remotely in
-the dashboard — evaluated on-device, no network delay. The docs are explicit:
+the dashboard - evaluated on-device, no network delay. The docs are explicit:
 *"we strongly recommend registering all core functionality in order to remotely
-configure which features you want to gate — without an app update."* And more
-broadly: *"Register. Everything."* — even analytics events with no feature block,
+configure which features you want to gate - without an app update."* And more
+broadly: *"Register. Everything."* - even analytics events with no feature block,
 so you can retroactively attach a paywall almost anywhere.
 
 Why this matters:
@@ -32,7 +32,7 @@ Why this matters:
   un-registered premium moment is a monetization lever you can't pull.
 - **The dashboard is where decisions live and change.** Show/hide a paywall,
   gate/un-gate a feature, target an audience, pause for a free weekend, run an
-  A/B test — all without a release. That only works if the placement already
+  A/B test - all without a release. That only works if the placement already
   exists in the binary.
 
 ### Keep intentionally remote gates inside the registration callback
@@ -41,14 +41,14 @@ When a placement is intentionally responsible for deciding access, do not wrap i
 in a hand-rolled `if subscribed { … } else { showPaywall() }`.
 
 ```
-// WRONG — freezes your monetization logic into this app release
+// WRONG - freezes your monetization logic into this app release
 if (user.hasActiveSubscription) {
   startWorkout();
 } else {
   presentPaywall();
 }
 
-// RIGHT — the campaign decides; subscribed users are filtered automatically
+// RIGHT - the campaign decides; subscribed users are filtered automatically
 register(placement: "start_workout") {
   startWorkout();
 }
@@ -58,12 +58,12 @@ Why that split gate is a trap:
 
 - **Subscribed/entitled users are filtered automatically.** When you register a
   placement, Superwall evaluates subscription state itself: an entitled user's
-  `feature` closure runs immediately with no paywall. You do not need — and must
-  not add — your own check for this.
+  `feature` closure runs immediately with no paywall. You do not need - and must
+  not add - your own check for this.
 - **A code check hard-codes the decision.** "Gated vs non-gated," "who sees it,"
   "show it at all" become properties of a shipped binary instead of dashboard
   settings. You lose remote configuration, A/B testing, holdouts, and the free
-  weekend — the entire reason to use Superwall.
+  weekend - the entire reason to use Superwall.
 - **It double-gates.** Your `if` plus the paywall's own gating means even a
   Non-Gated experiment can't let users through. It silently breaks experiments.
 
@@ -83,9 +83,9 @@ product and monetization model, named for the moment rather than the button.
 |---|---|---|
 | `onboarding_complete` | User finishes onboarding | A common high-intent moment when the app has a meaningful onboarding flow. |
 | one per premium feature gate | User taps a paid feature (`unlock_export`, `start_workout`, `remove_watermark`) | The direct "I want this paid thing" signal. `verb_noun`. One per distinct feature, not one per button that reaches it. |
-| a limit/quota-reached moment | Free allowance exhausted (`hit_export_limit`, `scan_limit_reached`) | Catches users at peak demonstrated need. Distinct from the feature gate — the user already used it free and wants more. |
+| a limit/quota-reached moment | Free allowance exhausted (`hit_export_limit`, `scan_limit_reached`) | Catches users at peak demonstrated need. Distinct from the feature gate - the user already used it free and wants more. |
 | `upgrade_tapped` | User taps an explicit "Go Pro" / upgrade entry in settings or a banner | Self-selected high intent. Route to your fullest paywall. |
-| `app_launch` / `session_start` | Cold launch / new session (both are auto-registered standard placements) | Broad-reach surface for win-back or a hard gate on relaunch. Usually left **campaign-off** until you deliberately want it — powerful but blunt. |
+| `app_launch` / `session_start` | Cold launch / new session (both are auto-registered standard placements) | Broad-reach surface for win-back or a hard gate on relaunch. Usually left **campaign-off** until you deliberately want it - powerful but blunt. |
 | a win-back / discount surface | User declines, churns, or hits a re-engagement point | Where you route a discounted offer. Often driven by standard placements like `paywall_decline` or `transaction_abandon`. |
 
 The last two may remain unrouted until there is a deliberate reason to present.
@@ -99,7 +99,7 @@ these for lifecycle moments instead of inventing your own.
 ## 3. App-type playbook
 
 Map the app to its type, then instrument that type's premium surface. Names below
-are examples — keep your app's real feature vocabulary.
+are examples - keep your app's real feature vocabulary.
 
 | App type | The paid surface | Placements (moment that fires them) |
 |---|---|---|
@@ -110,19 +110,19 @@ are examples — keep your app's real feature vocabulary.
 | Dating/social | Likes limit, see-who-liked, boosts | `likes_limit_reached` (out of free likes), `see_who_liked` (tap the blurred list), `unlock_boost` (tap boost), `unlock_super_like` |
 | AI apps | Generation quota, premium models | `generation_limit_reached` (free generations used up), `unlock_premium_model` (select a locked model), `unlock_faster_generation`, `onboarding_complete` |
 
-For each: pick the 3–6 moments that actually correspond to money, name them for
+For each: pick the 3-6 moments that actually correspond to money, name them for
 the moment, and register at the point of intent (the tap/attempt), not on a
 timer or a screen you happen to have.
 
 ## 4. The audit method (for reviews)
 
 When reviewing an existing app's placements, work in this order. Don't start from
-the placements that exist — start from the money.
+the placements that exist - start from the money.
 
 1. **Enumerate the premium surface first.** List what is actually paid or
    intended to be paid: every gated feature, every quota, every "Pro" affordance,
    the upgrade entries, the end of onboarding. This is the ground truth to
-   measure against — build it before looking at code.
+   measure against - build it before looking at code.
 2. **Map each paid surface → placement.** For every item in step 1, find the
    `register`/`registerPlacement` call that covers it (use the grep in your
    framework reference).
@@ -151,7 +151,7 @@ instrumentation out of the issue list.
 
 Every placement is either a **hard gate** or a **soft/non-gated** surface. This is
 set per-paywall in the dashboard (editor → General → Feature Gating), *not* in
-code — the same `register` call serves both. But you decide the *intent* when you
+code - the same `register` call serves both. But you decide the *intent* when you
 place it, so know which you mean.
 
 - **Hard gate (paid-only feature).** The work lives inside the `feature` closure,
@@ -163,7 +163,7 @@ place it, so know which you mean.
 - **Soft gate (show paywall, let them through).** Same code, paywall set to
   **Non-Gated**: the `feature` closure runs *"when the paywall is dismissed
   (whether they paid or not)."* Use for upsell moments where you want to surface
-  the offer but not block the user — a nudge at `session_start`, a value reminder
+  the offer but not block the user - a nudge at `session_start`, a value reminder
   after `onboarding_complete`.
 
 In both cases, when no campaign matches or the user is already entitled, the
@@ -195,7 +195,7 @@ just to make the placement list shorter.
   `remove_watermark`, `download_offline`. It reads as what the user is trying to
   do.
 - **Stable forever.** A placement name is a routing key shared with the dashboard
-  campaign. Renaming it silently breaks routing — the campaign keeps looking for
+  campaign. Renaming it silently breaks routing - the campaign keeps looking for
   the old name and the new one fires nothing. Treat renames as breaking changes:
   add the new campaign mapping before shipping the rename, or don't rename.
 - **Never rename for style alone.** Consistency is not worth breaking campaign
@@ -217,6 +217,6 @@ superwall campaigns placement <campaignId> another_placement --project <id> --ap
 ```
 
 Rule of thumb: one campaign per distinct paywall surface/decision (onboarding,
-settings upgrade, win-back), routing the placements that belong to it — not one
+settings upgrade, win-back), routing the placements that belong to it - not one
 campaign per trigger, and no duplicates. Placements can also be added "on the fly":
 registering a name that doesn't exist yet auto-creates it on the campaign.

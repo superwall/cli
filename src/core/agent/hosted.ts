@@ -69,10 +69,14 @@ export interface HostedCompletionRequest {
   response_format?: unknown;
 }
 
-export async function hostedChatCompletion(body: HostedCompletionRequest): Promise<unknown> {
+export async function hostedChatCompletion(
+  body: HostedCompletionRequest,
+): Promise<unknown> {
   const token = await getOAuthAccessToken();
   if (!token) {
-    throw new Error("Not signed in — run `superwall login` to use the hosted agent.");
+    throw new Error(
+      "Not signed in - run `superwall login` to use the hosted agent.",
+    );
   }
 
   const res = await fetch(`${baseUrl()}${COMPLETIONS_PATH}`, {
@@ -88,7 +92,9 @@ export async function hostedChatCompletion(body: HostedCompletionRequest): Promi
   if (res.status === 402) throw new HostedQuotaExhaustedError();
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`Hosted agent request failed (HTTP ${res.status}). ${detail}`.trim());
+    throw new Error(
+      `Hosted agent request failed (HTTP ${res.status}). ${detail}`.trim(),
+    );
   }
   return res.json();
 }

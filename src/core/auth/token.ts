@@ -65,7 +65,7 @@ export async function resolveAuthToken(
       return { token: session.accessToken, session };
     const refreshed = await refreshAccessToken(session);
     if (refreshed) return { token: refreshed.accessToken, session: refreshed };
-    // Refresh failed — fall through to an API key if one is stored.
+    // Refresh failed - fall through to an API key if one is stored.
   }
   if (session.apiKey) return { token: session.apiKey, session };
   throw new NotLoggedInError();

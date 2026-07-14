@@ -2,7 +2,7 @@ import { defineCommand, type DefinedCommand } from "@/command";
 import type { ResourceName } from "@/core/api/resources";
 import { addCampaignPlacement, writeStoreKit } from "./resource/actions";
 import { create } from "./resource/create";
-import { list, useApp } from "./resource/list";
+import { list, useApp, useOrg } from "./resource/list";
 
 export function runResource(
   resource: ResourceName,
@@ -18,6 +18,9 @@ export function runResource(
       if (action === "create") return create(context, context.api, resource);
       if (action === "use" && resource === "apps") {
         return useApp(context, context.api);
+      }
+      if (action === "use" && resource === "orgs") {
+        return useOrg(context, context.api);
       }
       if (action === "placement" && resource === "campaigns") {
         return addCampaignPlacement(context, context.api);

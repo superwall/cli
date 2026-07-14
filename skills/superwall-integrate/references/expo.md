@@ -1,26 +1,26 @@
-# Integrate Superwall — Expo
+# Integrate Superwall - Expo
 
 You are integrating Superwall into an Expo app using the **`expo-superwall`**
-package (the modern, recommended SDK — hooks + provider API). Get it installed and
-configured. **Do not add paywall triggers (`usePlacement` / `registerPlacement`)**
-— that is the separate **superwall-placements** skill.
+package (the modern, recommended SDK - hooks + provider API). Get it installed and
+configured. **Do not add paywall triggers (`usePlacement` / `registerPlacement`)**;
+that is the separate **superwall-placements** skill.
 
 **Requirements:** Expo SDK **53+**, iOS deployment target **15.1+** (**16.4+** for
-Expo SDK 56+), Android **minSdkVersion 21+**. **Expo Go does not work** — you must
+Expo SDK 56+), Android **minSdkVersion 21+**. **Expo Go does not work** - you must
 use a Development Build (custom dev client). See Pitfalls.
 
 ## Checklist
 
 - [ ] **0. Decide the purchase-handling path** (default / RevenueCat / custom).
 - [ ] **1. Install** `expo-superwall` + `expo-build-properties`; produce a native build.
-- [ ] **2. Configure** — wrap the root in `SuperwallProvider` with per-platform `pk_` keys.
+- [ ] **2. Configure** - wrap the root in `SuperwallProvider` with per-platform `pk_` keys.
 - [ ] **3. API keys** via `EXPO_PUBLIC_*` env vars (public keys, never secrets).
 - [ ] **4. Purchase handling** for the chosen path.
-- [ ] **5. Build a dev client** (NOT Expo Go) — native module links.
-- [ ] **6. Run** — logs show Superwall startup; StoreKit test config if testing purchases.
-- [ ] **7. Post-integration** (identity, attributes, subscription state, deep links, analytics) — final section, then → **superwall-placements**.
+- [ ] **5. Build a dev client** (NOT Expo Go) - native module links.
+- [ ] **6. Run** - logs show Superwall startup; StoreKit test config if testing purchases.
+- [ ] **7. Post-integration** (identity, attributes, subscription state, deep links, analytics) - final section, then → **superwall-placements**.
 
-## Docs access — read the current page when baked steps aren't enough
+## Docs access - read the current page when baked steps aren't enough
 
 Superwall's docs are fetchable **as markdown**. Fetch instead of guessing:
 
@@ -34,7 +34,7 @@ Pattern: fetch `expo/llms.txt` for the slug, then
 `https://superwall.com/docs/expo/{path}.md`. Every `curl` here is verified working.
 The Expo SDK is hooks-based (`useUser`, `usePlacement`, `useSuperwallEvents`) and
 its component API (`SuperwallProvider`, `SuperwallLoading`/`SuperwallLoaded`,
-`CustomPurchaseControllerProvider`) differs from the native SDKs — **never invent a
+`CustomPurchaseControllerProvider`) differs from the native SDKs - **never invent a
 hook or prop**; fetch the SDK-reference page and confirm.
 
 ## Quickstart walk
@@ -53,12 +53,12 @@ hook or prop**; fetch the SDK-reference page and confirm.
 SDK-reference index (components + hooks):
 `curl -sL https://superwall.com/docs/expo/llms.txt`
 
-## Step 0 — Purchase-handling path (decide first)
+## Step 0 - Purchase-handling path (decide first)
 
 > **Important:** Paths (b) and (c) require you to keep subscription status in sync
 > yourself via `setSubscriptionStatus`. Path (a) does not.
 
-- **(a) Default — Superwall handles StoreKit/Billing.** No existing IAP code.
+- **(a) Default - Superwall handles StoreKit/Billing.** No existing IAP code.
   Recommended, zero purchase code. Just use `SuperwallProvider`.
 - **(b) RevenueCat stays the source of truth.** Keep RC purchasing and sync its
   entitlements into Superwall. `curl -sL https://superwall.com/docs/expo/guides/using-revenuecat.md`
@@ -67,7 +67,7 @@ SDK-reference index (components + hooks):
 
 For a full migration off another SDK, use the **superwall-migrate** skill.
 
-## Step 1 — Install
+## Step 1 - Install
 
 Detect the package manager from the lockfile. Use `expo install` so versions match
 the Expo SDK.
@@ -110,10 +110,10 @@ them (back up custom native code first):
 npx expo prebuild --clean
 ```
 
-## Step 2 — Configure
+## Step 2 - Configure
 
 Wrap the app root in `SuperwallProvider` with per-platform public keys. Place it at
-the very top of the tree — the root `App` component, or `app/_layout.tsx` for
+the very top of the tree - the root `App` component, or `app/_layout.tsx` for
 expo-router so it mounts once above every route.
 
 ```bash
@@ -137,7 +137,7 @@ export default function App() {
 ```
 
 `apiKeys` takes `ios` and optionally `android`. `SuperwallProvider` configures the
-SDK on mount — **do not** also call a separate `configure()`. Optional behavior
+SDK on mount - **do not** also call a separate `configure()`. Optional behavior
 goes through the `options` prop:
 ```tsx
 <SuperwallProvider apiKeys={{ ios: "...", android: "..." }} options={{ /* ... */ }}>
@@ -145,15 +145,15 @@ goes through the `options` prop:
 To gate UI on SDK readiness, `SuperwallLoading` / `SuperwallLoaded` are available
 (see the SDK-reference components).
 
-## Step 3 — API key handling
+## Step 3 - API key handling
 
-Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys — iOS and
+Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys - iOS and
 Android apps each have their own key. Store as `EXPO_PUBLIC_`-prefixed env vars
 (readable in JS at build time) in `.env` / `app.config.js`. Public keys aren't
 secrets, but `EXPO_PUBLIC_*` keeps them out of source and lets environments differ.
 **Never** put a secret/server key here.
 
-## Step 4 — Purchase handling (implements Step 0's choice)
+## Step 4 - Purchase handling (implements Step 0's choice)
 
 ### (a) Default
 Just use `SuperwallProvider` as above. Superwall manages purchases, restores, and
@@ -161,7 +161,7 @@ subscription status.
 
 ### (b) RevenueCat / (c) custom
 Supply a `PurchaseController` through `CustomPurchaseControllerProvider`. Read the
-page before writing — the exact wiring differs between the hooks API and the compat
+page before writing - the exact wiring differs between the hooks API and the compat
 API:
 ```bash
 curl -sL https://superwall.com/docs/expo/guides/advanced-configuration.md
@@ -190,21 +190,21 @@ export class MyPurchaseController extends PurchaseController {
 > / `SubscriptionStatus.Inactive()`. For (b), map RevenueCat's active entitlements
 > into that call. Confirm shapes against the advanced-configuration page.
 
-## Step 5 & 6 — Verify
+## Step 5 & 6 - Verify
 
 1. **Build a dev client** and run it: `npx expo run:ios` / `npx expo run:android`
    (NOT Expo Go). Must compile with the native module linked.
 2. Watch Metro/Xcode/Android logs on launch for Superwall SDK startup.
-   > **Important:** Superwall does **not** refetch config on hot reload — fully
+   > **Important:** Superwall does **not** refetch config on hot reload - fully
    > restart the app after changing SDK setup.
-3. iOS purchases in the simulator: StoreKit testing —
+3. For iOS purchases in the simulator, read the StoreKit testing guide:
    `curl -sL https://superwall.com/docs/expo/guides/testing-purchases.md`
 
-## Step 7 — Post-integration (wire what the app needs, then → placements)
+## Step 7 - Post-integration (wire what the app needs, then → placements)
 
 The Expo SDK exposes these through the **`useUser`** hook and event hooks.
 
-- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `identify(userId)` on login, `signOut()` on logout. `userId`
+- **User identity - REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `identify(userId)` on login, `signOut()` on logout. `userId`
   should be a **UUID** (StoreKit compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/expo/quickstart/user-management.md`
   ```tsx
@@ -212,8 +212,8 @@ The Expo SDK exposes these through the **`useUser`** hook and event hooks.
   await identify(user.id);
   signOut();
   ```
-- **User attributes** — `curl -sL https://superwall.com/docs/expo/quickstart/setting-user-properties.md`
-- **Tracking subscription state** — read `subscriptionStatus` from `useUser`
+- **User attributes** - `curl -sL https://superwall.com/docs/expo/quickstart/setting-user-properties.md`
+- **Tracking subscription state** - read `subscriptionStatus` from `useUser`
   (`status` is `"ACTIVE" | "INACTIVE" | "UNKNOWN"`); react to changes with
   `useSuperwallEvents({ onSubscriptionStatusChange })`.
   `curl -sL https://superwall.com/docs/expo/quickstart/tracking-subscription-state.md`
@@ -221,8 +221,8 @@ The Expo SDK exposes these through the **`useUser`** hook and event hooks.
   const { subscriptionStatus } = useUser();
   if (subscriptionStatus?.status === "ACTIVE") { /* entitled */ }
   ```
-- **Deep links** — `curl -sL https://superwall.com/docs/expo/guides/handling-deep-links.md`
-- **3rd-party analytics** — forward events via `useSuperwallEvents`.
+- **Deep links** - `curl -sL https://superwall.com/docs/expo/guides/handling-deep-links.md`
+- **3rd-party analytics** - forward events via `useSuperwallEvents`.
   `curl -sL https://superwall.com/docs/expo/guides/3rd-party-analytics.md`
 
 ## Pitfalls

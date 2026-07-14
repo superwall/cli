@@ -29,7 +29,7 @@ export async function copyIntegrationPrompt(
   const copied = await copyToClipboard(prompt);
   if (copied) {
     ui.note(
-      "Paste it into your coding agent (Claude Code, Cursor, …) to integrate Superwall.",
+      "Paste it into Claude Code, Codex, Cursor, or another coding agent.",
       "Integration prompt copied to clipboard",
     );
   } else {
@@ -102,8 +102,9 @@ export function finish(context: CommandContext, action: WizardAction): void {
       "Verify on device.",
     ],
   };
-  context.output.render(
-    blocks.nextSteps(steps[action.id] ?? []),
-    blocks.outro(`Done.  ${DASHBOARD_URL}`),
-  );
+  const finalBlocks = [blocks.nextSteps(steps[action.id] ?? [])];
+  if (action.id !== "review" && action.id !== "review-fix") {
+    finalBlocks.push(blocks.outro(`Done.  ${DASHBOARD_URL}`));
+  }
+  context.output.render(...finalBlocks);
 }

@@ -1,8 +1,8 @@
-# Integrate Superwall — Flutter
+# Integrate Superwall - Flutter
 
 You are integrating Superwall into a Flutter app using the
 **`superwallkit_flutter`** package. Get it installed and configured. **Do not add
-paywall triggers (`registerPlacement`)** — that is the separate
+paywall triggers (`registerPlacement`)** - that is the separate
 **superwall-placements** skill.
 
 **Requirements:** iOS deployment target **14.0+**; Android **minSdkVersion 26**,
@@ -15,11 +15,11 @@ paywall triggers (`registerPlacement`)** — that is the separate
 - [ ] **2. Configure** once at launch with the platform's `pk_` key.
 - [ ] **3. API keys** branched on `Platform.isIOS` (public keys, never secrets).
 - [ ] **4. Purchase handling** for the chosen path.
-- [ ] **5. Build** — `flutter run` on iOS sim + Android emulator; pods/gradle resolve.
-- [ ] **6. Run** — console shows Superwall startup; StoreKit test config if testing purchases.
+- [ ] **5. Build** - `flutter run` on iOS sim + Android emulator; pods/gradle resolve.
+- [ ] **6. Run** - console shows Superwall startup; StoreKit test config if testing purchases.
 - [ ] **7. Post-integration** (identity, attributes, subscription state, deep links, analytics), then → **superwall-placements**.
 
-## Docs access — read the current page when baked steps aren't enough
+## Docs access - read the current page when baked steps aren't enough
 
 ```bash
 curl -sL https://superwall.com/docs/flutter/llms.txt        # index: every Flutter doc path
@@ -29,7 +29,7 @@ curl -sL https://superwall.com/docs/flutter/quickstart/install.md   # any page +
 
 Pattern: fetch `flutter/llms.txt` for the slug, then
 `https://superwall.com/docs/flutter/{path}.md`. Every `curl` here is verified
-working. **Never invent an API** — if a symbol isn't in this reference or a page you
+working. **Never invent an API** - if a symbol isn't in this reference or a page you
 fetched, fetch and confirm.
 
 ## Quickstart walk
@@ -44,19 +44,19 @@ fetched, fetch and confirm.
 | 6 | `flutter/quickstart/tracking-subscription-state` | Step 7 here |
 | 7 | `flutter/quickstart/user-management` | Step 7 here |
 
-## Step 0 — Purchase-handling path (decide first)
+## Step 0 - Purchase-handling path (decide first)
 
 > **Important:** Paths (b)/(c) require you to keep `subscriptionStatus` in sync;
 > path (a) does not.
 
-- **(a) Default — Superwall handles StoreKit/Billing.** Recommended, zero purchase code.
+- **(a) Default - Superwall handles StoreKit/Billing.** Recommended, zero purchase code.
 - **(b) RevenueCat stays the source of truth.** Keep RC purchasing; sync entitlements in.
   `curl -sL https://superwall.com/docs/flutter/guides/using-revenuecat.md`
 - **(c) Custom `PurchaseController`.** Supply one, drive status.
 
 Full migration off another SDK → **superwall-migrate** skill.
 
-## Step 1 — Install
+## Step 1 - Install
 
 Add the package (match the project's existing Flutter tooling):
 ```bash
@@ -87,11 +87,11 @@ android {
     }
 }
 ```
-`android/build.gradle` — AGP 8.4+:
+`android/build.gradle` - AGP 8.4+:
 ```groovy
 plugins { id 'com.android.application' version '8.4.1' apply false }
 ```
-`android/gradle/wrapper/gradle-wrapper.properties` — Gradle 8.6+:
+`android/gradle/wrapper/gradle-wrapper.properties` - Gradle 8.6+:
 ```properties
 distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip
 ```
@@ -108,7 +108,7 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip
 <activity android:name="com.superwall.sdk.debug.SWConsoleActivity" />
 ```
 
-## Step 2 — Configure
+## Step 2 - Configure
 
 ```bash
 curl -sL https://superwall.com/docs/flutter/quickstart/configure.md
@@ -144,14 +144,14 @@ void initState() {
 Optional behavior goes through `SuperwallOptions` via the named `options:` argument:
 `Superwall.configure("pk_...", options: options)`.
 
-## Step 3 — API key handling
+## Step 3 - API key handling
 
-Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys — iOS and
+Use the **Public API Key(s)** (`pk_…`) from Dashboard ▸ Settings ▸ Keys - iOS and
 Android apps have separate keys, so branch on `Platform.isIOS`. Public keys aren't
 secrets; inline them, or read from existing config (`--dart-define` /
 `String.fromEnvironment`). **Never** use a secret key.
 
-## Step 4 — Purchase handling (implements Step 0's choice)
+## Step 4 - Purchase handling (implements Step 0's choice)
 
 ### (a) Default
 Just `Superwall.configure(apiKey)`. Superwall handles purchases, restores, and
@@ -197,21 +197,21 @@ Superwall.configure(apiKey, MyPurchaseController());
 > Superwall.shared.setSubscriptionStatus(SubscriptionStatusInactive());
 > ```
 > For (b), map RevenueCat's active entitlements into that call. Confirm the exact
-> `configure` argument shape against the advanced-configuration page — some SDK
+> `configure` argument shape against the advanced-configuration page - some SDK
 > versions differ.
 
-## Step 5 & 6 — Verify
+## Step 5 & 6 - Verify
 
 1. **Build & run:** `flutter run` on an iOS simulator and an Android emulator. Must
    compile with pods/gradle resolved.
 2. Watch the console on launch for Superwall SDK startup. Raise verbosity via
    `SuperwallOptions` logging if needed.
-3. iOS purchase testing: StoreKit testing —
+3. For iOS purchase testing, read the StoreKit testing guide:
    `curl -sL https://superwall.com/docs/flutter/guides/testing-purchases.md`
 
-## Step 7 — Post-integration (wire what the app needs, then → placements)
+## Step 7 - Post-integration (wire what the app needs, then → placements)
 
-- **User identity — REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `Superwall.shared.identify(user.id)` on login,
+- **User identity - REQUIRED if the app has ANY auth/login system.** Not optional: without it every logged-in user is anonymous to Superwall, breaking user-scoped audiences, attribution, and cross-device status. Wire it the moment you see a login/logout flow (grep for signIn/login/logout/signOut/auth). `Superwall.shared.identify(user.id)` on login,
   `Superwall.shared.reset()` on logout. `userId` should be a **UUID** (StoreKit
   compat), never an email/device id/guessable value.
   `curl -sL https://superwall.com/docs/flutter/quickstart/user-management.md`
@@ -222,20 +222,20 @@ Superwall.configure(apiKey, MyPurchaseController());
   > **Use when** you need the unhashed `appUserId` to reach Google Play: set
   > `SuperwallOptions()..passIdentifiersToPlayStore = true` and pass it via
   > `identify(user.id, options: options)` (Android only).
-- **User attributes** — `Superwall.shared.setUserAttributes(attributes)` (a
+- **User attributes** - `Superwall.shared.setUserAttributes(attributes)` (a
   `Map<String, dynamic>`; merges, overwriting matching keys). The Flutter SDK does
   **not** support deleting an attribute via `null`.
   `curl -sL https://superwall.com/docs/flutter/quickstart/setting-user-properties.md`
-- **Tracking subscription state** — read `Superwall.shared.subscriptionStatus`
+- **Tracking subscription state** - read `Superwall.shared.subscriptionStatus`
   (`.unknown` / `.active(entitlements)` / `.inactive`).
   `curl -sL https://superwall.com/docs/flutter/quickstart/tracking-subscription-state.md`
-- **Deep links** — pass incoming URLs to `Superwall.shared.handleDeepLink(url)`; it
+- **Deep links** - pass incoming URLs to `Superwall.shared.handleDeepLink(url)`; it
   fires the `deepLink_open` placement so routing is dashboard-driven.
   `curl -sL https://superwall.com/docs/flutter/guides/handling-deep-links.md`
   ```dart
   Future<void> handleUrl(Uri url) async => Superwall.shared.handleDeepLink(url);
   ```
-- **3rd-party analytics** — forward Superwall events via the delegate.
+- **3rd-party analytics** - forward Superwall events via the delegate.
   `curl -sL https://superwall.com/docs/flutter/guides/3rd-party-analytics.md`
 
 ## Pitfalls

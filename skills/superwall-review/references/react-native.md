@@ -1,4 +1,4 @@
-# Review Superwall — React Native
+# Review Superwall - React Native
 
 You are reviewing a bare React Native app. First distinguish the recommended
 `expo-superwall` provider path from the legacy
@@ -66,7 +66,7 @@ Inspect React Navigation/linking config plus iOS and Android native URL handling
 Cover cold start and foreground delivery. Provider-style apps follow the current
 Expo module `handleDeepLink` docs; legacy apps use the singleton
 `handleDeepLink`. The goal is the standard `deepLink_open` placement and its URL
-parameters—not an app-maintained URL-to-placement table.
+parameters - not an app-maintained URL-to-placement table.
 
 Web Checkout is conditional. If used, verify return URLs and redemption behavior
 for the detected purchase path. Default purchasing needs no custom entitlement

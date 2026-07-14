@@ -1,8 +1,13 @@
-export function parseParams(pairs: string[] | undefined): Record<string, unknown> {
+export function parseParams(
+  pairs: string[] | undefined,
+): Record<string, unknown> {
   const root: Record<string, unknown> = {};
   for (const pair of pairs ?? []) {
     const eq = pair.indexOf("=");
-    if (eq < 0) throw new Error(`Invalid -d "${pair}" — expected key=value (or key:=jsonValue).`);
+    if (eq < 0)
+      throw new Error(
+        `Invalid -d "${pair}" - expected key=value (or key:=jsonValue).`,
+      );
 
     const typed = pair[eq - 1] === ":"; // `key:=value` → parse value as JSON
     const key = pair.slice(0, typed ? eq - 1 : eq);
@@ -18,7 +23,9 @@ function parseTyped(raw: string, pair: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error(`Invalid -d "${pair}" — value after := must be JSON (number, true/false, null, "quoted", [...], {...}).`);
+    throw new Error(
+      `Invalid -d "${pair}" - value after := must be JSON (number, true/false, null, "quoted", [...], {...}).`,
+    );
   }
 }
 
@@ -30,7 +37,11 @@ function splitKey(key: string): string[] {
     .filter((p) => p !== "");
 }
 
-function setPath(root: Record<string, unknown>, parts: string[], value: unknown): void {
+function setPath(
+  root: Record<string, unknown>,
+  parts: string[],
+  value: unknown,
+): void {
   let cur: Record<string, unknown> | unknown[] = root;
   for (let i = 0; i < parts.length; i++) {
     const key = parts[i]!;
@@ -48,11 +59,18 @@ function setPath(root: Record<string, unknown>, parts: string[], value: unknown)
   }
 }
 
-function get(container: Record<string, unknown> | unknown[], key: string): unknown {
+function get(
+  container: Record<string, unknown> | unknown[],
+  key: string,
+): unknown {
   return Array.isArray(container) ? container[Number(key)] : container[key];
 }
 
-function assign(container: Record<string, unknown> | unknown[], key: string, value: unknown): void {
+function assign(
+  container: Record<string, unknown> | unknown[],
+  key: string,
+  value: unknown,
+): void {
   if (Array.isArray(container)) container[Number(key)] = value;
   else container[key] = value;
 }

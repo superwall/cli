@@ -6,7 +6,11 @@ import { superwallDriver } from "./superwall";
 export * from "./types";
 export { claudeDriver, codexDriver, superwallDriver };
 
-export const ALL_DRIVERS: AgentDriver[] = [claudeDriver, codexDriver, superwallDriver];
+export const ALL_DRIVERS: AgentDriver[] = [
+  claudeDriver,
+  codexDriver,
+  superwallDriver,
+];
 
 export interface DetectedDriver {
   driver: AgentDriver;

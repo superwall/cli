@@ -1,6 +1,6 @@
 ---
 name: superwall-dashboard
-description: Set up an app's Superwall dashboard state so its placements actually present paywalls — create entitlements, products (imported from App Store Connect or created with real pricing), and campaigns that carry each placement. Use after the SDK is integrated and placements are registered, or whenever "nothing shows" because a placement has no campaign.
+description: Set up the Superwall dashboard state required for placements to present paywalls. Creates entitlements, products with real pricing, and campaigns that carry each placement. Use after the SDK is integrated and placements are registered, or when a placement has no presenting campaign.
 ---
 
 # Set up the Superwall dashboard
@@ -36,7 +36,7 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
    campaign/paywall commands, `--project <id>` to product/entitlement commands. Always pass
    these ids; JSON mode never guesses when multiple scopes exist.
 2. **Find registered placements.** Grep the app for `register(`, `registerPlacement(`,
-   `usePlacement(`, `Superwall.shared.register` — collect the exact event-name strings.
+   `usePlacement(`, `Superwall.shared.register` - collect the exact event-name strings.
 3. **Ensure an entitlement.** `superwall entitlements list --project <id> --json`; reuse an existing one, else
    `superwall entitlements create pro --project <id> --json`. Default to a single `pro` entitlement unless the
    app clearly has tiers.
@@ -52,13 +52,13 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
 - **List before you create.** Never create a duplicate entitlement/product/campaign.
 - **Never delete or destructively modify** existing campaigns, paywalls, products, or audiences.
 - Reuse existing entitlements and products; only add what's missing.
-- Idempotent by design — re-running should be a no-op when everything already exists.
+- Idempotent by design - re-running should be a no-op when everything already exists.
 
 ## Best practices
 
 - **One campaign per surface** (e.g. an "Onboarding" campaign carrying the onboarding placement,
   a "Feature gates" campaign carrying in-app gate placements) reads better than one campaign per
-  placement — a campaign can carry several related placements. When unsure, one campaign per
+  placement - a campaign can carry several related placements. When unsure, one campaign per
   distinct user context.
 - Name campaigns for the surface/intent, not the placement string.
 - Keep entitlements coarse (`pro`); don't mint one per product.
@@ -68,7 +68,7 @@ placement (in code)  →  campaign (routes it)  →  audience (who)  →  paywal
 - What already existed (ids).
 - What you created: entitlement, product ids, campaign ids, placements attached.
 - **Left manual:** paywall design (Superwall dashboard editor), attaching products to the paywall,
-  and — if products were created by hand — reconciling identifiers with App Store Connect / Google Play.
+  and - if products were created by hand - reconciling identifiers with App Store Connect / Google Play.
 
 See `references/setup.md` for the App Store Connect import path, `.storekit` generation, and pricing-flag reference.
 

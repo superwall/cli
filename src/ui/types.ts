@@ -2,7 +2,7 @@ export interface Opt {
   value: string;
   label: string;
   hint?: string;
-  /** Shown but not selectable — cursor skips it, rendered dim. */
+  /** Shown but not selectable - cursor skips it, rendered dim. */
   disabled?: boolean;
 }
 
@@ -24,6 +24,7 @@ export interface MultiSelectOpts {
 export interface TextOpts {
   message: string;
   placeholder?: string;
+  initialValue?: string;
   validate?: (v: string) => string | undefined;
   footer?: string;
   transient?: boolean;
@@ -66,6 +67,9 @@ export interface Renderer {
   spinner: () => Spinner;
   select: (o: SelectOpts) => Promise<string | null>;
   multiselect: (o: MultiSelectOpts) => Promise<string[] | null>;
-  confirm: (o: { message: string; initial?: boolean }) => Promise<boolean | null>;
+  confirm: (o: {
+    message: string;
+    initial?: boolean;
+  }) => Promise<boolean | null>;
   text: (o: TextOpts) => Promise<string | null>;
 }

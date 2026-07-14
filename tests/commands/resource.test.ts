@@ -120,7 +120,7 @@ test("campaign dry runs still reject an unusable campaign without a placement", 
   assert.equal(process.exitCode, 1);
 });
 
-test("--no-ui is clean text but keeps strict noninteractive scope rules", async () => {
+test("--no-interactive keeps strict machine scope rules without prompting", async () => {
   const calls: Array<{ method: string; value?: unknown }> = [];
   const api = {
     list: async () => [
@@ -131,7 +131,7 @@ test("--no-ui is clean text but keeps strict noninteractive scope rules", async 
 
   await executeCommand(
     runResource("products").definition,
-    { _: [], $0: "superwall", action: "list", ui: false },
+    { _: [], $0: "superwall", action: "list", interactive: false },
     {
       api: () => api,
       nonInteractive: false,

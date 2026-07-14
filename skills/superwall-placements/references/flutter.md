@@ -1,4 +1,4 @@
-# Superwall placements — Flutter
+# Superwall placements - Flutter
 
 > Read `references/strategy.md` first for *where* placements go and *why* (the core
 > set, app-type playbook, audit method, gate depth). This file is the Flutter API.
@@ -16,7 +16,7 @@ Future<void> registerPlacement(
 })
 ```
 
-Called as `Superwall.shared.registerPlacement(...)`. Async — `await` it. `params`
+Called as `Superwall.shared.registerPlacement(...)`. Async - `await` it. `params`
 values are available in campaign audience rules; keys starting with `$` are
 reserved and dropped. The `feature` callback is your gate; gating configuration
 lives in the dashboard.
@@ -60,21 +60,21 @@ Keep gated work in `feature`; use the handler for analytics/UI only.
 ## Feature-gating semantics
 
 When the `feature` callback runs (per the paywall's Feature Gating setting in the
-dashboard — editor → General → Feature Gating):
+dashboard - editor → General → Feature Gating):
 
 | Situation | Does `feature` run? |
 |---|---|
 | No campaign matches | Yes, immediately (no network, no paywall) |
 | User already subscribed | Yes, immediately (entitlement verified server-side) |
 | Holdout / no audience match | Yes, immediately (per current subscription state) |
-| Paywall shown, **Non-Gated**, dismissed | Yes — whether or not they paid |
-| Paywall shown, **Gated**, dismissed without purchase | No — feature blocked |
+| Paywall shown, **Non-Gated**, dismissed | Yes - whether or not they paid |
+| Paywall shown, **Gated**, dismissed without purchase | No - feature blocked |
 | User purchases | Yes, after the transaction |
 
 **Gated** = paid-only; **Non-Gated** = show paywall, let them through either way.
 Same `registerPlacement` call for both; the dashboard decides.
 
-## Where to place — one realistic gate
+## Where to place - one realistic gate
 
 `onTap` / `onPressed`, limit-reached:
 
@@ -120,7 +120,7 @@ superwall campaigns placement <campaignId> another_placement --project <id> --ap
 ## Pitfalls
 
 - **Registering inside `build`.** Never call `registerPlacement` from a widget's
-  `build` method — it re-fires on every rebuild. Call it from a callback
+  `build` method - it re-fires on every rebuild. Call it from a callback
   (`onPressed`/`onTap`) or a one-shot `initState`.
 - **Missing `await`.** `registerPlacement` returns `Future<void>`; without `await`
   errors go unhandled and follow-up work can't be sequenced.

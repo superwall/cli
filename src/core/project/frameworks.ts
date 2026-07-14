@@ -27,9 +27,10 @@ export const frameworkByIntegration: Record<Integration, Framework> = {
     integration: Integration.reactNative,
     name: "React Native",
     supported: true,
-    // The standalone RN SDK is deprecated — bare RN uses expo-superwall via expo-modules.
+    // The standalone RN SDK is deprecated - bare RN uses expo-superwall via expo-modules.
     sdkPackage: "expo-superwall",
-    docsUrl: "https://superwall.com/docs/expo/guides/using-expo-sdk-in-bare-react-native",
+    docsUrl:
+      "https://superwall.com/docs/expo/guides/using-expo-sdk-in-bare-react-native",
   },
   [Integration.flutter]: {
     integration: Integration.flutter,

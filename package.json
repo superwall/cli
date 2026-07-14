@@ -1,15 +1,26 @@
 {
   "name": "superwall",
   "version": "0.1.0",
-  "description": "The Superwall CLI — set up and manage Superwall from your terminal (and your coding agent).",
+  "description": "The official CLI for managing Superwall from your terminal or coding agent.",
   "keywords": [
     "superwall",
     "paywall",
     "cli",
     "subscriptions",
     "app-store-connect",
-    "agent"
+    "agent",
+    "ios",
+    "android"
   ],
+  "homepage": "https://github.com/superwall/cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superwall/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/superwall/cli/issues"
+  },
+  "author": "Superwall",
   "type": "module",
   "bin": {
     "superwall": "dist/bin.js",
@@ -19,6 +30,7 @@
     "dist",
     "skills",
     "prompts",
+    "LICENSE",
     "package.json",
     "README.md"
   ],
@@ -32,7 +44,9 @@
     "dev": "bun bin.ts",
     "test": "tsx --test $(rg --files tests -g '*.test.ts')",
     "link:global": "tsdown && bun link",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "bun run build",
+    "prepublishOnly": "bun run typecheck && bun run test"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.201",
@@ -54,5 +68,8 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

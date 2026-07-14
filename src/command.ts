@@ -69,17 +69,15 @@ export async function executeCommand<Auth extends AuthPolicy>(
   const json = Boolean(argv.json);
   const environmentNonInteractive =
     runtime.nonInteractive ?? isNonInteractive();
-  const noUi = argv.ui === false;
   const explicitNonInteractive = argv.interactive === false;
   const outputMode: OutputMode = json
     ? "json"
-    : noUi || environmentNonInteractive
+    : environmentNonInteractive
       ? "text"
       : "rich";
   const interactive =
     definition.interaction !== "none" &&
     !json &&
-    !noUi &&
     !explicitNonInteractive &&
     !environmentNonInteractive;
   const installDir = resolve(
@@ -174,7 +172,7 @@ function normalizeError(error: unknown): {
   if (error instanceof ApiError) {
     return {
       code: "api_error",
-      message: `${error.message}${error.body ? ` — ${error.body.slice(0, 300)}` : ""}`,
+      message: `${error.message}${error.body ? ` - ${error.body.slice(0, 300)}` : ""}`,
       status: error.status,
     };
   }

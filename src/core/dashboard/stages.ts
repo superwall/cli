@@ -244,7 +244,7 @@ async function connectAppStoreConnect(ctx: StageCtx): Promise<string | "back"> {
       break;
     } catch {
       ui.error(
-        `Couldn't read \`${keyFilePath}\` — check the path and try again.`,
+        `Couldn't read \`${keyFilePath}\` - check the path and try again.`,
       );
     }
   }
@@ -320,7 +320,7 @@ async function importFromAsc(
     );
     if (apps.length === 0) {
       ui.info(
-        "No apps in your App Store Connect account yet — skipping product import.",
+        "No apps in your App Store Connect account yet - skipping product import.",
       );
       return "done";
     }
@@ -408,7 +408,7 @@ export function runPaywallStage(): void {
       "",
       `  ${DASHBOARD_URL}`,
       "",
-      "Your agent also has the `superwall-editor` skill — ask it to build or edit a",
+      "Your agent also has the `superwall-editor` skill - ask it to build or edit a",
       "paywall from the CLI.",
     ].join("\n"),
     "Paywall",

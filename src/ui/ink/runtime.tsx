@@ -1,7 +1,13 @@
 import { render, type Instance } from "ink";
 import { App } from "./App";
 import { addItem, addList, reset, setActive, updateActive } from "./store";
-import type { MultiSelectOpts, Renderer, SelectOpts, Spinner, TextOpts } from "../types";
+import type {
+  MultiSelectOpts,
+  Renderer,
+  SelectOpts,
+  Spinner,
+  TextOpts,
+} from "../types";
 
 let instance: Instance | null = null;
 
@@ -47,8 +53,16 @@ export const inkRenderer: Renderer = {
   },
 
   select(o: SelectOpts): Promise<string | null> {
-    const preferred = o.options.findIndex((x) => x.value === o.initialValue && !x.disabled);
-    const index = preferred >= 0 ? preferred : Math.max(0, o.options.findIndex((x) => !x.disabled));
+    const preferred = o.options.findIndex(
+      (x) => x.value === o.initialValue && !x.disabled,
+    );
+    const index =
+      preferred >= 0
+        ? preferred
+        : Math.max(
+            0,
+            o.options.findIndex((x) => !x.disabled),
+          );
     return new Promise((resolve) =>
       setActive({
         type: "select",
@@ -77,7 +91,12 @@ export const inkRenderer: Renderer = {
 
   confirm(o: { message: string; initial?: boolean }): Promise<boolean | null> {
     return new Promise((resolve) =>
-      setActive({ type: "confirm", message: o.message, value: o.initial ?? true, resolve }),
+      setActive({
+        type: "confirm",
+        message: o.message,
+        value: o.initial ?? true,
+        resolve,
+      }),
     );
   },
 
@@ -87,7 +106,7 @@ export const inkRenderer: Renderer = {
         type: "text",
         message: o.message,
         placeholder: o.placeholder,
-        value: "",
+        value: o.initialValue ?? "",
         footer: o.footer,
         transient: o.transient,
         validate: o.validate,

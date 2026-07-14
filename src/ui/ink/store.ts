@@ -42,7 +42,12 @@ export type Active =
       selected: Set<string>;
       resolve: (v: string[] | null) => void;
     }
-  | { type: "confirm"; message: string; value: boolean; resolve: (v: boolean | null) => void }
+  | {
+      type: "confirm";
+      message: string;
+      value: boolean;
+      resolve: (v: boolean | null) => void;
+    }
   | {
       type: "text";
       message: string;
@@ -74,12 +79,21 @@ export function getState(): State {
 }
 
 export function addItem(kind: ItemKind, text: string, title?: string): void {
-  state = { ...state, items: [...state.items, { id: nextId++, kind, text, title }] };
+  state = {
+    ...state,
+    items: [...state.items, { id: nextId++, kind, text, title }],
+  };
   emit();
 }
 
 export function addList(items: ListItem[], empty?: string): void {
-  state = { ...state, items: [...state.items, { id: nextId++, kind: "list", text: "", list: { items, empty } }] };
+  state = {
+    ...state,
+    items: [
+      ...state.items,
+      { id: nextId++, kind: "list", text: "", list: { items, empty } },
+    ],
+  };
   emit();
 }
 

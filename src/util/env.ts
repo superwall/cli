@@ -6,5 +6,7 @@ export function apiKeyFromEnv(): string | undefined {
 }
 
 export function isNonInteractive(): boolean {
-  return !process.stdout.isTTY || !process.stdin.isTTY || process.env.CI === "true";
+  return (
+    !process.stdout.isTTY || !process.stdin.isTTY || process.env.CI === "true"
+  );
 }

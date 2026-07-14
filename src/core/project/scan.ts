@@ -20,7 +20,7 @@ export interface ScanResult {
   root: string;
   isMonorepo: boolean;
   apps: DetectedApp[];
-  comingSoon: DetectedApp[];
+  unsupported: DetectedApp[];
   skipped: string[];
 }
 
@@ -67,9 +67,18 @@ function classifyJs(dir: string): Classification | null {
   const pkg = readPackageJson(dir);
   if (!pkg) return null;
   const deps = allDeps(pkg);
-  if ("expo" in deps) return { integration: Integration.expo, details: `Expo ${deps.expo}`, score: 0.96 };
+  if ("expo" in deps)
+    return {
+      integration: Integration.expo,
+      details: `Expo ${deps.expo}`,
+      score: 0.96,
+    };
   if ("react-native" in deps)
-    return { integration: Integration.reactNative, details: deps["react-native"], score: 0.9 };
+    return {
+      integration: Integration.reactNative,
+      details: deps["react-native"],
+      score: 0.9,
+    };
   const fe = FRONTEND_DEPS.find((d) => d in deps);
   if (fe) return { integration: Integration.web, details: fe, score: 0.7 };
   return null;
@@ -147,13 +156,14 @@ function looksLikeMonorepoRoot(root: string): boolean {
 
 export async function scanProject(root: string): Promise<ScanResult> {
   const opts = { cwd: root, ignore: IGNORE, deep: SCAN_DEPTH } as const;
-  const [pkgPaths, xcodeProjects, packageSwifts, tuistProjects, pubspecs] = await Promise.all([
-    fg("**/package.json", opts),
-    fg("**/*.xcodeproj", { ...opts, onlyDirectories: true }),
-    fg("**/Package.swift", opts),
-    fg("**/Project.swift", opts),
-    fg("**/pubspec.yaml", opts),
-  ]);
+  const [pkgPaths, xcodeProjects, packageSwifts, tuistProjects, pubspecs] =
+    await Promise.all([
+      fg("**/package.json", opts),
+      fg("**/*.xcodeproj", { ...opts, onlyDirectories: true }),
+      fg("**/Package.swift", opts),
+      fg("**/Project.swift", opts),
+      fg("**/pubspec.yaml", opts),
+    ]);
 
   const jsRoots = pkgPaths.map((p) => dirname(join(root, p)));
   const jsRootSet = new Set(jsRoots);
@@ -180,12 +190,20 @@ export async function scanProject(root: string): Promise<ScanResult> {
   for (const t of tuistProjects) swiftDirs.add(dirname(join(root, t)));
   for (const dir of swiftDirs) {
     if (isGeneratedNative(dir, jsRootSet)) continue;
-    apps.push(makeApp(root, dir, { integration: Integration.swift, details: swiftUiKind(dir), score: 0.95 }));
+    apps.push(
+      makeApp(root, dir, {
+        integration: Integration.swift,
+        details: swiftUiKind(dir),
+        score: 0.95,
+      }),
+    );
   }
 
   for (const p of pubspecs) {
     const dir = dirname(join(root, p));
-    apps.push(makeApp(root, dir, { integration: Integration.flutter, score: 0.9 }));
+    apps.push(
+      makeApp(root, dir, { integration: Integration.flutter, score: 0.9 }),
+    );
   }
 
   const byPath = new Map<string, DetectedApp>();
@@ -196,13 +214,13 @@ export async function scanProject(root: string): Promise<ScanResult> {
   const deduped = [...byPath.values()].sort((a, b) => b.score - a.score);
 
   const supported = deduped.filter((a) => a.framework.supported);
-  const comingSoon = deduped.filter((a) => !a.framework.supported);
+  const unsupported = deduped.filter((a) => !a.framework.supported);
 
   return {
     root,
     isMonorepo: looksLikeMonorepoRoot(root) || deduped.length > 1,
     apps: supported,
-    comingSoon,
+    unsupported,
     skipped: [...new Set(skipped)],
   };
 }

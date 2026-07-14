@@ -48,7 +48,7 @@ export interface WizardAction {
   successLabel: string;
   /** Only offer when the app already has the SDK installed. */
   requiresIntegration: boolean;
-  /** Needs the org-scoped session (REST API) — gated on auth. */
+  /** Needs the org-scoped session (REST API) - gated on auth. */
   requiresOrgKey: boolean;
   /** "silent" = no final output; "report" = render the agent's final findings. */
   outputMode: "silent" | "report";

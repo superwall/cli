@@ -4,12 +4,12 @@ import { App } from "../src/ui/ink/App";
 import { addItem, setActive } from "../src/ui/ink/store";
 
 const { lastFrame, stdin } = render(<App />);
-addItem("intro", "Superwall wizard v0.1.0");
+addItem("intro", "Superwall CLI v0.1.0");
 addItem("info", "Detected Swift (iOS) · SwiftUI");
 addItem("success", "Superwall is already set up in Orbis.");
 addItem(
   "report",
-  "## Superwall Placement Audit — Orbis\n\n**Placements found**\n- `campaign_trigger` — ContentView.swift:27 — Go Premium button.\n\n**Overall health: needs work**",
+  "## Superwall Placement Audit - Orbis\n\n**Placements found**\n- `campaign_trigger` - ContentView.swift:27 - Go Premium button.\n\n**Overall health: needs work**",
 );
 await new Promise((r) => setTimeout(r, 60));
 console.log("=== TIMELINE FRAME ===");
@@ -20,7 +20,11 @@ setActive({
   type: "select",
   message: "What do you want to do?",
   options: [
-    { value: "integrate", label: "Integrate the SDK", hint: "install + configure" },
+    {
+      value: "integrate",
+      label: "Integrate the SDK",
+      hint: "install + configure",
+    },
     { value: "review", label: "Review placements" },
   ],
   index: 0,

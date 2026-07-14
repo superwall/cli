@@ -1,4 +1,4 @@
-# Superwall placements — Expo
+# Superwall placements - Expo
 
 > Read `references/strategy.md` first for *where* placements go and *why* (the
 > core set, app-type playbook, audit method, gate depth). This file is the Expo API.
@@ -27,7 +27,7 @@ function usePlacement(callbacks?: {
 }
 ```
 
-`registerPlacement` is async — `await` it. Gating configuration lives in the
+`registerPlacement` is async - `await` it. Gating configuration lives in the
 dashboard; the `feature` callback is your gate. Lifecycle observation goes through
 the hook's `callbacks`, not a handler argument.
 
@@ -90,14 +90,14 @@ Gating setting in the dashboard):
 | No campaign matches | Yes, immediately (no network, no paywall) |
 | User already subscribed | Yes, immediately, no paywall |
 | Holdout / no audience match | Yes, immediately (per current subscription state) |
-| Paywall shown, **Non-Gated**, dismissed | Yes — whether or not they paid |
-| Paywall shown, **Gated**, dismissed without purchase | No — feature blocked |
+| Paywall shown, **Non-Gated**, dismissed | Yes - whether or not they paid |
+| Paywall shown, **Gated**, dismissed without purchase | No - feature blocked |
 | User purchases | Yes, after the transaction |
 
 **Gated** = paid-only; **Non-Gated** = show paywall, let them through either way.
 Same `registerPlacement` call for both; the dashboard decides.
 
-## Where to place — one realistic gate
+## Where to place - one realistic gate
 
 Limit-reached on a `Pressable`:
 
@@ -138,7 +138,7 @@ superwall campaigns placement <campaignId> another_placement --project <id> --ap
 ## Pitfalls
 
 - **Registering during render.** Call `registerPlacement` from an event handler
-  (`onPress`) or an effect — never in the component body, or it fires on every
+  (`onPress`) or an effect - never in the component body, or it fires on every
   render.
 - **Missing `await`.** `registerPlacement` returns a Promise; without `await` you
   can't sequence follow-up work and errors go unhandled. Prefer the hook callbacks

@@ -46,3 +46,17 @@ test("noninteractive account resolution accepts explicit and existing keys", asy
   assert.equal(explicit?.apiKey, "pk_explicit");
   assert.equal(project?.apiKey, "pk_project");
 });
+
+test("interactive account fallback asks only for the public API key", async () => {
+  const ui = recordingRenderer();
+  ui.text = async () => "pk_prompted";
+
+  const result = await resolveAccount({
+    existing,
+    argv: { _: [], $0: "superwall" },
+    interactive: true,
+    ui,
+  });
+
+  assert.deepEqual(result, { apiKey: "pk_prompted" });
+});

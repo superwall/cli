@@ -1,5 +1,6 @@
 import type { Arguments } from "yargs";
 import type { CommandContext } from "@/command";
+import { requireOrg } from "@/core/account/org";
 import { ApiError, type SuperwallApi } from "@/core/api/client";
 import {
   createApplication,
@@ -97,15 +98,17 @@ async function createApp(
     return;
   }
 
-  const projectId =
-    target ??
-    String(
+  let projectId = target;
+  if (!projectId) {
+    await requireOrg(api, context.interactive);
+    projectId = String(
       (
         await apiCall(context, `Creating project "${name}"`, () =>
           createProject(api, name),
         )
       ).id,
     );
+  }
   let project: Row & {
     name?: string;
     applications?: Array<{
@@ -134,7 +137,7 @@ async function createApp(
       )
     ) {
       throw new Error(
-        `Project ${projectId} already has a ${platform} app — each project allows one app per platform.`,
+        `Project ${projectId} already has a ${platform} app - each project allows one app per platform.`,
       );
     }
     throw error;

@@ -107,7 +107,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
       options: [
         {
           value: "paywalls",
-          label: "Paywalls only — keep RevenueCat for billing",
+          label: "Paywalls only - keep RevenueCat for billing",
         },
         { value: "migrate", label: "Fully migrate to Superwall" },
         { value: "later", label: "Decide later" },
@@ -196,7 +196,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
 
   ui.step("Step 1 · Integrate the SDK");
   if (existing.fullyIntegrated) {
-    ui.info("SDK already integrated — skipped.");
+    ui.info("SDK already integrated - skipped.");
   } else if (!dryRun) {
     const how = !ctx.interactive
       ? "now"
@@ -244,7 +244,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
       );
   }
 
-  // Dashboard stages run whenever we can resolve scope — interactively (after
+  // Dashboard stages run whenever we can resolve scope - interactively (after
   // app-binding) OR headless/CI when a session + app key are already present, so
   // `integrate` is fully non-interactive-capable (and benchable end-to-end).
   const canResolveHeadless = !ctx.interactive && !!apiKey && !!loadSession();
@@ -288,7 +288,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   } else if (!dryRun && ctx.interactive) {
     ui.step("Step 2 · Products, Campaigns, Paywall & Verify");
     ui.info(
-      "Couldn't match this app in your Superwall org — set these up in the dashboard.",
+      "Couldn't match this app in your Superwall org - set these up in the dashboard.",
     );
   }
 
@@ -339,7 +339,7 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     !loadSession()
   ) {
     ui.warn(
-      "That needs an authenticated session — run `superwall login` first (or set SUPERWALL_API_KEY).",
+      "That needs an authenticated session - run `superwall login` first (or set SUPERWALL_API_KEY).",
     );
     ui.outro("");
     return;
@@ -367,13 +367,13 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
 
   if (dryRun) {
     printPlan(driver.info.displayName, action, actionCtx);
-    ui.outro("Dry run — no changes made.");
+    ui.outro("Dry run - no changes made.");
     return;
   }
 
   if (action.id === "integrate" && existing.fullyIntegrated) {
     ui.note(
-      "SDK + configure() already present — no code changes made.",
+      "SDK + configure() already present - no code changes made.",
       "Already integrated",
     );
   } else {

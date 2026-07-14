@@ -1,4 +1,5 @@
 import { defineCommand, type CommandContext } from "@/command";
+import { requireOrg } from "@/core/account/org";
 import type { SuperwallApi } from "@/core/api/client";
 import { ascProxy, listAscConfigs } from "@/core/api/asc";
 import {
@@ -19,6 +20,7 @@ export const runAsc = defineCommand({
   output: "both",
   async run(ctx) {
     const target = String(ctx.argv.target ?? "");
+    await requireOrg(ctx.api, ctx.interactive);
 
     if (target === "keys") return runAscKeys(ctx, ctx.api);
 
@@ -107,7 +109,7 @@ async function resolveTeam(
   );
   if (configs.length === 0) {
     throw new Error(
-      "App Store Connect isn't connected. Connect it with `superwall asc keys set …`.",
+      "App Store Connect isn't connected. Run `superwall asc keys set --help`.",
     );
   }
   if (configs.length > 1) {

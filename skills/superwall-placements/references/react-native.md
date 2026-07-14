@@ -1,11 +1,11 @@
-# Superwall placements — React Native
+# Superwall placements - React Native
 
 > Read `references/strategy.md` first for *where* placements go and *why* (the core
 > set, app-type playbook, audit method, gate depth). This file is the RN API.
 
 The RN SDK (`@superwall/react-native-superwall`) registers placements via a single
 options-object `register` call on the shared instance. (This is distinct from Expo,
-which uses the `usePlacement` hook — see `references/expo.md` if the app uses
+which uses the `usePlacement` hook - see `references/expo.md` if the app uses
 `expo-superwall`.)
 
 ## API
@@ -22,7 +22,7 @@ async register(options: {
 }): Promise<void>
 ```
 
-Called as `Superwall.shared.register({ ... })`. Async — `await` it. `params` values
+Called as `Superwall.shared.register({ ... })`. Async - `await` it. `params` values
 are available in campaign audience rules; keys starting with `$` are reserved and
 dropped. The `feature` callback is your gate; gating configuration lives in the
 dashboard.
@@ -70,14 +70,14 @@ dashboard):
 | No campaign matches | Yes, immediately (no network, no paywall) |
 | User already subscribed | Yes, immediately, no paywall |
 | Holdout / no audience match | Yes, immediately (per current subscription state) |
-| Paywall shown, **Non-Gated**, dismissed | Yes — whether or not they paid |
-| Paywall shown, **Gated**, dismissed without purchase | No — feature blocked |
+| Paywall shown, **Non-Gated**, dismissed | Yes - whether or not they paid |
+| Paywall shown, **Gated**, dismissed without purchase | No - feature blocked |
 | User purchases | Yes, after the transaction |
 
 **Gated** = paid-only; **Non-Gated** = show paywall, let them through either way.
 Same `register` call for both; the dashboard decides.
 
-## Where to place — one realistic gate
+## Where to place - one realistic gate
 
 `onPress` on a `Pressable`, limit-reached:
 
@@ -123,7 +123,7 @@ superwall campaigns placement <campaignId> another_placement --project <id> --ap
 ## Pitfalls
 
 - **Registering during render.** Call `register` from an event handler or effect,
-  never in the component body — it would fire on every render.
+  never in the component body - it would fire on every render.
 - **Missing `await`.** `register` returns a Promise; without `await` errors go
   unhandled and you can't sequence follow-up work. Use `await` in a try/catch or
   attach the presentation handler.

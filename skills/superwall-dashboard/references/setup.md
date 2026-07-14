@@ -1,4 +1,4 @@
-# Dashboard setup — reference
+# Dashboard setup - reference
 
 Detailed recipes for the `superwall-dashboard` skill. Every command takes `--json`.
 
@@ -37,7 +37,7 @@ resolve it on device.
 
 There is **no** `products import` subcommand. Two ways to import:
 
-1. **Orchestrated (hands-off):** run `superwall integrate` — the CLI
+1. **Orchestrated (hands-off):** run `superwall integrate` - the CLI
    walks App Store Connect and imports products interactively.
 2. **Agent-driven (you do it):** connect the key once, enumerate via the signed ASC proxy, then
    create each product:
@@ -86,14 +86,14 @@ superwall campaigns create "Onboarding" onboarding_complete --project <id> --app
 superwall campaigns placement <campaignId> another_placement --project <id> --app <id> --json
 ```
 
-- `create` takes a **description**, not an identifier — name it for the surface.
+- `create` takes a **description**, not an identifier - name it for the surface.
 - A campaign can carry several related placements; call `campaigns placement` once per placement.
-- Adding a placement that's already on the campaign is safe to skip — list first.
+- Adding a placement that's already on the campaign is safe to skip - list first.
 
 ## What the CLI cannot do (leave manual)
 
-- **Design the paywall** and **attach products to it** — done in the Superwall dashboard's paywall
+- **Design the paywall** and **attach products to it** - done in the Superwall dashboard's paywall
   editor. `superwall paywalls list --project <id> --app <id> --json` shows what exists; there is no paywall create/design CLI.
-- **Configure audiences / experiment splits** beyond the default — done in the dashboard.
+- **Configure audiences / experiment splits** beyond the default - done in the dashboard.
 
 Report these as the remaining manual steps.

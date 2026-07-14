@@ -185,8 +185,8 @@ function ListBlock({
 }
 
 /**
- * One timeline entry. Connectors are a PREFIX of every item after the first —
- * never a trailing line — so the timeline can't dangle when a command ends
+ * One timeline entry. Connectors prefix every item after the first and are
+ * never trailing, so the timeline cannot dangle when a command ends
  * without an outro (stop() caps it with `└`). The outro itself attaches
  * directly to the previous row: no empty `│` tail before the cap.
  */

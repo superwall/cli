@@ -1,5 +1,5 @@
 import { API_HOST } from "@/constants";
-import { loadSession, type Session } from "@/core/auth/storage";
+import { loadSession, saveSession, type Session } from "@/core/auth/storage";
 import { resolveAuthToken } from "@/core/auth/token";
 import { NotLoggedInError } from "@/core/auth/errors";
 
@@ -37,6 +37,12 @@ export class SuperwallApi {
   }
   get userEmail(): string | undefined {
     return this.session.userEmail;
+  }
+
+  /** Persists the org so it's picked at most once per login. */
+  setOrg(org: { id: string; name?: string }): void {
+    this.session = { ...this.session, orgId: org.id, orgName: org.name };
+    saveSession(this.session);
   }
 
   private base(): string {

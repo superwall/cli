@@ -8,14 +8,18 @@ export interface DiscoveredKey {
 
 export async function discoverPublicApiKey(
   api: SuperwallApi,
-  opts: { bundleId?: string; onMany?: (apps: Application[]) => Promise<Application | null> } = {},
+  opts: {
+    bundleId?: string;
+    onMany?: (apps: Application[]) => Promise<Application | null>;
+  } = {},
 ): Promise<DiscoveredKey | null> {
   const apps = (await listApplications(api)).filter((a) => a.public_api_key);
   if (apps.length === 0) return null;
 
   if (opts.bundleId) {
     const match = apps.find((a) => a.bundle_id === opts.bundleId);
-    if (match?.public_api_key) return { apiKey: match.public_api_key, app: match };
+    if (match?.public_api_key)
+      return { apiKey: match.public_api_key, app: match };
   }
 
   if (apps.length === 1) {
@@ -25,7 +29,8 @@ export async function discoverPublicApiKey(
 
   if (opts.onMany) {
     const picked = await opts.onMany(apps);
-    if (picked?.public_api_key) return { apiKey: picked.public_api_key, app: picked };
+    if (picked?.public_api_key)
+      return { apiKey: picked.public_api_key, app: picked };
   }
   return null;
 }

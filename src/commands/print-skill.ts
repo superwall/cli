@@ -6,9 +6,9 @@ import { FRAMEWORK_REF, type ActionId } from "@/core/agent/actions";
 import { loadBundledSkill, type BundledSkillId } from "@/core/agent/skills";
 
 /**
- * `<command> --skill` — print the raw playbook (skill + this project's
+ * `<command> --skill` - print the raw playbook (skill + this project's
  * framework/provider reference) for an agent to follow directly, instead of
- * the CLI orchestrating the run. No UI: stdout must stay clean markdown.
+ * the CLI orchestrating the run. Stdout must stay clean markdown.
  */
 export function runPrintSkill(
   actionId: ActionId,
@@ -23,9 +23,7 @@ export function runPrintSkill(
       ? FRAMEWORK_REF[app.framework.integration]
       : undefined;
 
-    // `integrate --skill` is the FULL journey — SDK → placements → campaigns —
-    // so an agent following it does the complete setup (matching what the
-    // orchestrated command runs), not SDK-only.
+    // `integrate --skill` includes the full SDK, placement, and campaign journey.
     if (actionId === "integrate") {
       const parts = [
         loadBundledSkill("superwall-integrate", frameworkRef),
@@ -38,7 +36,7 @@ export function runPrintSkill(
         return;
       }
       process.stdout.write(
-        "# Set up Superwall — full integration\n\nDo all three phases in order:\n\n---\n\n" +
+        "# Set up Superwall - full integration\n\nDo all three phases in order:\n\n---\n\n" +
           parts.join("\n\n---\n\n") +
           "\n",
       );

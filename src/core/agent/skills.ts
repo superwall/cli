@@ -68,9 +68,8 @@ export const KNOWN_SKILLS: SkillInfo[] = [
   {
     name: "superwall-editor",
     summary:
-      "Build & edit live paywalls, onboarding, and web2app flows from the CLI",
+      "Build and edit live paywalls, onboarding, and web2app flows from the CLI",
   },
-  { name: "wwdc", summary: "WWDC session lookup, comparison, and citation" },
 ];
 
 export async function fetchToolkitSkills(): Promise<SkillInfo[]> {
@@ -118,7 +117,7 @@ async function fetchSkillSummary(name: string): Promise<string> {
     const description = raw.trim().replace(/^["']|["'`]+$/g, "");
     const firstSentence = description.split(/(?<=\.)\s/)[0] ?? description;
     return firstSentence.length > 64
-      ? `${firstSentence.slice(0, 61)}…`
+      ? `${firstSentence.slice(0, 61)}...`
       : firstSentence;
   } catch {
     return "";

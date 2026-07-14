@@ -51,7 +51,7 @@ function printHelp(): void {
   const head = (title: string) => pc.bold(`${title}:`);
   process.stdout.write(
     [
-      `${pc.bold("Superwall CLI")} ${pc.dim(`v${VERSION}`)} — control Superwall from your terminal.`,
+      `${pc.bold("Superwall CLI")} ${pc.dim(`v${VERSION}`)}`,
       "",
       pc.bold("Usage:"),
       "  superwall [command]",
@@ -70,34 +70,33 @@ function printHelp(): void {
       head("Resource commands"),
       row(
         "bootstrap",
-        "Complete account tree: projects, apps, campaigns, products, …",
+        "Complete account tree: projects, apps, campaigns, and products",
       ),
-      row("apps", "Projects & their platform apps (list · create · use)"),
-      row("products", "Products (list · create · storekit)"),
-      row("entitlements", "Entitlements (list · create)"),
-      row("campaigns", "Campaigns (list · create · placement)"),
+      row("apps", "Projects and platform apps (list, create, use)"),
+      row("products", "Products (list, create, storekit)"),
+      row("entitlements", "Entitlements (list, create)"),
+      row("campaigns", "Campaigns (list, create, placement)"),
       row("paywalls", "Paywalls (list)"),
-      row("orgs", "Organizations (list)"),
+      row("orgs", "Organizations (list, use)"),
       row("query [sql]", "Run SQL against your ClickHouse analytics data"),
       "",
       head("API commands"),
       row(
-        "get · post · patch · delete",
-        "Raw requests to the Superwall API (/v2/…)",
+        "get, post, patch, delete",
+        "Raw requests to the Superwall API (/v2/...)",
       ),
       "",
       head("App Store Connect commands"),
       row("asc", "The ASC API via Superwall's signed proxy (no .p8 / JWT)"),
-      row("asc keys", "Manage App Store Connect API keys (list · set · rm)"),
+      row("asc keys", "Manage App Store Connect API keys (list, set, rm)"),
       "",
       head("Other commands"),
-      row("login · logout · whoami", "Authenticate the CLI"),
+      row("login, logout, whoami", "Authenticate the CLI"),
       row("skills", "Install the Superwall agent toolkit"),
       row("doctor", "Check the health of your integration"),
       "",
       pc.bold("Flags:"),
       row("--json", "Machine-readable output"),
-      row("--no-ui", "Minimal undecorated text; disables prompts"),
       row("--no-interactive", "Disable prompts for automation"),
       row("-v, --version", "Print the CLI version"),
       row("-h, --help", "Help for superwall"),
@@ -122,12 +121,6 @@ export async function run(): Promise<void> {
   let cli = yargs(args)
     .scriptName("superwall")
     .usage("Superwall CLI\n\n$0 [command]")
-    .option("ui", {
-      type: "boolean",
-      default: true,
-      hidden: true,
-      describe: "Rich interactive UI (use --no-ui for minimal text)",
-    })
     .option("interactive", {
       type: "boolean",
       default: true,
@@ -141,7 +134,7 @@ export async function run(): Promise<void> {
     })
     .command(
       "integrate",
-      "Set up Superwall in your app (SDK → placements → dashboard)",
+      "Set up the SDK, placements, and dashboard in your app",
       (y) =>
         y.options({
           ...installDirOption,
@@ -301,7 +294,7 @@ export async function run(): Promise<void> {
           .positional("target", {
             type: "string",
             describe:
-              "get|post|patch|delete, a raw path (/v1/…), or: apps | products | subscriptions | iaps | keys",
+              "get|post|patch|delete, a raw path (/v1/...), or: apps | products | subscriptions | iaps | keys",
           })
           .positional("value", {
             type: "string",
@@ -338,14 +331,14 @@ export async function run(): Promise<void> {
     );
 
   const RESOURCE_HELP: Partial<Record<(typeof RESOURCES)[number], string>> = {
-    orgs: "List your Superwall organizations",
-    apps: "Your apps, grouped by project (list · create <name> --platform ios · use <id>)",
+    orgs: "Your Superwall organizations (list, use <id|name>)",
+    apps: "Your apps, grouped by project (list, create <name> --platform ios, use <id>)",
   };
 
   for (const resource of RESOURCES) {
     cli = cli.command(
       `${resource} [action] [value] [value2]`,
-      RESOURCE_HELP[resource] ?? `Manage Superwall ${resource} (list · create)`,
+      RESOURCE_HELP[resource] ?? `Manage Superwall ${resource} (list, create)`,
       (y) =>
         y
           .positional("action", {
@@ -381,7 +374,7 @@ export async function run(): Promise<void> {
               type: "string",
               describe: "Output file (products storekit)",
             },
-            // products create — full product definition (mainly for agents)
+            // products create - full product definition (mainly for agents)
             price: {
               type: "number",
               describe: "Price in major units, e.g. 9.99 (products create)",
@@ -418,7 +411,7 @@ export async function run(): Promise<void> {
 
   cli = cli.command(
     "bootstrap",
-    "Complete account tree: orgs, projects, apps, campaigns, placements, products, …",
+    "Complete account tree: orgs, projects, apps, campaigns, placements, and products",
     (y) => y,
     (argv) => {
       return import("@/commands/api").then((m) => m.runBootstrap(argv));

@@ -1,4 +1,4 @@
-# Superwall placements — iOS / Swift
+# Superwall placements - iOS / Swift
 
 > Read `references/strategy.md` first for *where* placements go and *why* (the
 > core set, app-type playbook, audit method, gate depth). This file is the iOS API.
@@ -24,7 +24,7 @@ public func register(
 )
 ```
 
-Called on the shared instance: `Superwall.shared.register(...)`. Synchronous — no
+Called on the shared instance: `Superwall.shared.register(...)`. Synchronous - no
 `await`. `params` values are available in campaign audience rules; keys starting
 with `$` are reserved and dropped.
 
@@ -64,13 +64,13 @@ The `feature` closure is your gate. When it runs depends on the paywall's
 | No campaign matches the placement | Yes, immediately (no network, no paywall) |
 | User already subscribed / entitled | Yes, immediately, no paywall |
 | Holdout group or no audience match | Yes, immediately (runs per current subscription state) |
-| Paywall shown, **Non-Gated**, dismissed | Yes — access granted whether or not they paid |
-| Paywall shown, **Gated**, dismissed without purchase | No — feature blocked |
+| Paywall shown, **Non-Gated**, dismissed | Yes - access granted whether or not they paid |
+| Paywall shown, **Gated**, dismissed without purchase | No - feature blocked |
 | Paywall shown, user purchases | Yes, after the transaction completes |
 
 So: **Gated** = paid-only feature; **Non-Gated** = show the paywall but let them
 through either way (soft paywall / upsell). This is toggled in the dashboard, not
-in code — the same `register` call works for both.
+in code - the same `register` call works for both.
 
 ## Presentation handler (optional lifecycle observation)
 
@@ -93,9 +93,9 @@ Superwall.shared.register(placement: "unlock_export", handler: handler) {
 ```
 
 Use the handler for analytics/UI reactions only. Do **not** move the gated work
-into `onDismiss` — the `feature` closure already handles gating correctly.
+into `onDismiss` - the `feature` closure already handles gating correctly.
 
-## Where to place — one realistic gate
+## Where to place - one realistic gate
 
 SwiftUI button action:
 
@@ -147,7 +147,7 @@ superwall campaigns placement <campaignId> another_placement --project <id> --ap
 ## Pitfalls
 
 - **Registering inside `body`/render.** Never call `register` from within a
-  SwiftUI `body` computed property — it re-fires on every re-render. Register from
+  SwiftUI `body` computed property - it re-fires on every re-render. Register from
   a button action or `.onAppear`/`.task`.
 - **Registering before `configure`.** Calls before `Superwall.configure(apiKey:)`
   (typically in `App.init` / `AppDelegate`) are dropped. Configure first.

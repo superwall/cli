@@ -147,7 +147,9 @@ export async function listOrganizations(api: SuperwallApi): Promise<Row[]> {
 export function createProject(api: SuperwallApi, name: string): Promise<Row> {
   const orgId = api.org.id;
   if (!orgId)
-    throw new Error("No organization in the session — run `superwall login`.");
+    throw new Error(
+      "No organization selected - run `superwall orgs use <id|name>` first.",
+    );
   return api.post<Row>("/v2/projects", {
     name,
     organization_id: Number(orgId),
@@ -209,5 +211,5 @@ export function rowName(row: Row): string {
     if (typeof v === "string" && v) return v;
     if (typeof v === "number") return String(v);
   }
-  return String(row.id ?? "—");
+  return String(row.id ?? " - ");
 }

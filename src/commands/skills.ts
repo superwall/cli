@@ -63,7 +63,7 @@ export const runSkills = defineCommand({
     ui.outro(
       ok
         ? `**Done.** Try: ask your agent to "review my Superwall setup".`
-        : "Something went wrong — try again, or check that `npx` is available.",
+        : "Something went wrong - try again, or check that `npx` is available.",
     );
     if (!ok)
       throw new Error(

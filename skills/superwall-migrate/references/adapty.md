@@ -2,7 +2,7 @@
 
 Definitive playbook. Read fully before editing. Superwall has no Adapty-specific
 "using-adapty" guide, so PAYWALLS-ONLY mode uses the **generic** `PurchaseController`
-(`/docs/ios/guides/advanced-configuration`) — mirror the RevenueCat controller shape in
+(`/docs/ios/guides/advanced-configuration`) - mirror the RevenueCat controller shape in
 `references/revenuecat.md`, swapping RC calls for Adapty calls.
 
 ## Scope & checklist
@@ -17,16 +17,16 @@ This migrates the **SDK integration**, not the whole product. Checklist:
 - [ ] FULL only: remove Adapty dependency once verified
 - [ ] Hand back to user: **rebuild paywalls in the editor**, attach products, connect ASC/Play
 
-> **Important — what does NOT migrate:**
-> - **Adapty paywall designs** (Paywall Builder / remote config) cannot be imported — they are
+> **Important - what does NOT migrate:**
+> - **Adapty paywall designs** (Paywall Builder / remote config) cannot be imported - they are
 >   **rebuilt** in the Superwall editor.
 > - **Historical analytics / attribution** stays in Adapty.
 > - **Subscriber base:** there is **no** server-side subscriber migration from Adapty. Existing
->   subscribers keep access because their purchases live with the store (StoreKit / Play Billing) —
+>   subscribers keep access because their purchases live with the store (StoreKit / Play Billing);
 >   the app reads them device-side via **Restore Purchases** and maps them to Superwall
 >   entitlements. No subscriber data moves between backends.
 
-## Docs access — fetch live, don't trust baked text
+## Docs access - fetch live, don't trust baked text
 
 ```bash
 curl -sL https://superwall.com/docs/llms.txt                                          # index
@@ -39,33 +39,33 @@ curl -sL https://superwall.com/docs/support/faq/how-to-migrate-from-another-prov
 | Adapty | Superwall | Notes |
 |---|---|---|
 | Product (store SKU) | **Product** (re-created) | Keep the SAME App Store / Play product id. |
-| Paywall (Adapty Paywall Builder / remote config) | **Paywall** (rebuilt in editor) | Design does NOT import — rebuild from scratch. |
-| Placement (`main`, `onboarding`, …) | **Placement** (inside a **Campaign**) | Closest 1:1 — Adapty already hardcodes placement ids at call sites; reuse the names (as `snake_case`). |
+| Paywall (Adapty Paywall Builder / remote config) | **Paywall** (rebuilt in editor) | Design does NOT import - rebuild from scratch. |
+| Placement (`main`, `onboarding`, …) | **Placement** (inside a **Campaign**) | Closest 1:1 - Adapty already hardcodes placement ids at call sites; reuse the names (as `snake_case`). |
 | Access Level (e.g. `premium`) | **Entitlement** (re-created) | 1:1. Recreate each access-level id as a Superwall entitlement. |
 | `profile.accessLevels["premium"].isActive` | `Superwall.shared.subscriptionStatus.isActive` (FULL) | Device-derived in FULL mode. |
 | Profile (Adapty user) | Superwall user (`identify`) | |
 | `Adapty.updateProfile` custom attributes | `Superwall.shared.setUserAttributes` | |
 
-**Mental-model shift.** Adapty already uses placements — but you call `Adapty.getPaywall(placementId:)`,
+**Mental-model shift.** Adapty already uses placements - but you call `Adapty.getPaywall(placementId:)`,
 fetch products, and present. In Superwall you just `register(placement:)` at the call site and the
 **campaign** decides whether/which paywall shows. The decision moves from app code to the dashboard.
 
-## 2. Three modes — decide who owns purchases first
+## 2. Three modes - decide who owns purchases first
 
 Once Adapty is gone, something still has to purchase, restore, and **tell Superwall who is
-subscribed** — Superwall only auto-detects state when its own SDK made the purchase.
+subscribed** - Superwall only auto-detects state when its own SDK made the purchase.
 
-### Mode A — FULL, Superwall owns purchases (default)
+### Mode A - FULL, Superwall owns purchases (default)
 Remove Adapty. Superwall handles purchase/restore and computes entitlements from device records. No `PurchaseController`, no manual status setting.
 
-### Mode B — FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
+### Mode B - FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
 Adapty is gone, but the app still buys through its own code and uses Superwall only for paywalls.
 Superwall does NOT observe purchases it didn't make.
 
 > **Important:** From advanced-configuration, verbatim: "You **must** set
 > `Superwall.shared.subscriptionStatus` every time the user's subscription status changes, otherwise
 > the SDK won't know who to show a paywall to." Do exactly ONE of: (1) implement a `PurchaseController`
-> that sets `subscriptionStatus`; (2) enable observer mode — `SuperwallOptions().shouldObservePurchases = true`
+> that sets `subscriptionStatus`; (2) enable observer mode - `SuperwallOptions().shouldObservePurchases = true`
 > (then you can't call `Superwall.shared.purchase(...)`); or (3) push status manually after every
 > purchase/restore/expiry (iOS: from a `Transaction.currentEntitlements` read +
 > `Transaction.updates` listener; Expo/RN/Flutter: `Superwall.shared.setSubscriptionStatus(...)`).
@@ -75,7 +75,7 @@ curl -sL https://superwall.com/docs/ios/quickstart/tracking-subscription-state.m
 curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md
 ```
 
-### Mode C — PAYWALLS-ONLY, Adapty stays the purchase controller
+### Mode C - PAYWALLS-ONLY, Adapty stays the purchase controller
 Keep Adapty for purchases/receipts/webhooks; Superwall only shows paywalls. Implement a Superwall
 `PurchaseController` whose `purchase`/`restore` call Adapty, and mirror Adapty access levels into
 `Superwall.shared.subscriptionStatus` / `setSubscriptionStatus`. Confirm the exact
@@ -87,7 +87,7 @@ curl -sL https://superwall.com/docs/ios/guides/advanced-configuration.md
 
 *Pure observer* (analytics-only, Adapty owns purchases AND paywalls): `SuperwallOptions.shouldObservePurchases = true`. `curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`
 
-## 3. Codebase inventory — grep these symbols
+## 3. Codebase inventory - grep these symbols
 
 **iOS (Swift, `Adapty`):**
 - Config: `Adapty.activate(` , `AdaptyConfiguration`, `Adapty.delegate`, `AdaptyDelegate`
@@ -119,7 +119,7 @@ superwall products create com.app.premium_yearly --name "Premium Yearly" --proje
 superwall campaigns create "Main paywall" main --project <projectId> --app <appId> --json
 superwall campaigns placement <campaignId> onboarding --project <projectId> --app <appId> --json
 ```
-Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set … --json`).
+Product ids MUST equal existing App Store / Play SKUs (import from ASC via `superwall asc keys set --help`).
 Verify with the same explicit ids: `superwall entitlements list --project <projectId> --json`,
 `superwall products list --project <projectId> --json`, and `superwall campaigns list --project <projectId> --app <appId> --json`.
 
@@ -146,7 +146,7 @@ Verify with the same explicit ids: `superwall entitlements list --project <proje
 - **Attributes.** `Adapty.updateProfile(params)` (customAttributes) → `Superwall.shared.setUserAttributes([...])`. Call `identify` BEFORE `setUserAttributes`.
 - Remove the Adapty dependency only after build + verification.
 
-### PAYWALLS-ONLY mode — bridge to Adapty
+### PAYWALLS-ONLY mode - bridge to Adapty
 Build a Superwall `PurchaseController` (confirm signatures at advanced-configuration). Skeleton,
 mirroring the RC pattern with Adapty calls:
 ```swift
@@ -178,12 +178,12 @@ regardless) vs gated (only when entitled). Peek: `Superwall.shared.getPresentati
 
 ## 7. Order of operations + safety
 1. Re-create entitlements/products/campaign+placements (CLI); import products from ASC/Play so ids match.
-2. **Rebuild** paywalls in the editor, attach products (hand-back to user — designs do not import).
+2. **Rebuild** paywalls in the editor, attach products (hand-back to user - designs do not import).
 3. Add Superwall SDK alongside Adapty; configure it.
 4. Replace `getPaywall`/present call sites with `register(placement:)`; replace access-level reads with `subscriptionStatus`.
 5. Build, present each placement, Restore Purchases as an existing subscriber, confirm `subscriptionStatus.isActive`.
 6. FULL: remove controller + Adapty dependency. PAYWALLS-ONLY: keep Adapty + controller.
-7. Never delete Adapty dashboard/webhook config until verified in production. Existing subscribers keep access via device-side Restore Purchases (Superwall reads store records) — no server-side subscriber migration exists.
+7. Never delete Adapty dashboard/webhook config until verified in production. Existing subscribers keep access via device-side Restore Purchases (Superwall reads store records) - no server-side subscriber migration exists.
 
 ## 8. Pitfalls
 - **Double-finish / double-charge.** Exactly one SDK finishes transactions. PAYWALLS-ONLY: Adapty owns purchasing via the controller; never also call `Superwall.shared.purchase`. FULL: remove Adapty purchase paths.
@@ -195,10 +195,10 @@ regardless) vs gated (only when entitled). Peek: `Superwall.shared.getPresentati
   observer mode, or a manual `subscriptionStatus` set (§2 Mode B).
 - **Observer flag.** `shouldObservePurchases = true` disables `Superwall.shared.purchase`; observer mode only.
 - **Entitlement id mismatch.** Superwall entitlement ids must equal Adapty access-level ids exactly (`premium` ≠ `Premium`).
-- **Access-level nuances.** Adapty access levels also carry grace-period / lifetime / billing-issue states; when mirroring, treat `isActive` (incl. grace period per your policy) as entitled — don't silently drop grace-period users.
-- **Cache during switchover.** Status may read `.unknown`/`.inactive` until the first profile load / StoreKit sync — prompt Restore Purchases if a known subscriber looks free.
+- **Access-level nuances.** Adapty access levels also carry grace-period / lifetime / billing-issue states; when mirroring, treat `isActive` (incl. grace period per your policy) as entitled - don't silently drop grace-period users.
+- **Cache during switchover.** Status may read `.unknown`/`.inactive` until the first profile load / StoreKit sync - prompt Restore Purchases if a known subscriber looks free.
 - **identify order.** `identify` before `setUserAttributes`.
-- **Unverified controller signatures.** The Adapty controller above is a skeleton — verify `PurchaseController` protocol + result enums at the advanced-configuration doc, since there's no official Adapty sample.
+- **Unverified controller signatures.** The Adapty controller above is a skeleton - verify `PurchaseController` protocol + result enums at the advanced-configuration doc, since there's no official Adapty sample.
 
 ## 9. Deeper docs (fetch live)
 ```bash

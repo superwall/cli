@@ -102,7 +102,7 @@ async function buildAccountTree(
   const orgs = await listOrganizations(api);
   const orgList =
     orgs.length > 0 ? orgs : [{ id: api.org.id, name: api.org.name } as Row];
-  // The orgs endpoint can return an empty name — backfill the session's.
+  // The orgs endpoint can return an empty name - backfill the session's.
   for (const org of orgList) {
     if (!org.name && String(org.id ?? "") === api.org.id)
       org.name = api.org.name;

@@ -13,7 +13,7 @@ test("review uses the broad setup skill rather than the placement skill", () => 
   assert.match(body, /Purchases & subscriptions/);
   assert.match(body, /Deep links and Web Checkout/);
   assert.match(body, /Analytics events becoming placements is recommended/);
-  assert.doesNotMatch(body, /Review Superwall — Expo/);
+  assert.doesNotMatch(body, /Review Superwall - Expo/);
 });
 
 test("review composes exactly one framework reference", () => {
@@ -26,10 +26,10 @@ test("review composes exactly one framework reference", () => {
 
   for (const [reference, heading] of cases) {
     const body = loadBundledSkill("superwall-review", reference);
-    assert.match(body, new RegExp(`# Review Superwall — ${heading}`));
+    assert.match(body, new RegExp(`# Review Superwall - ${heading}`));
     for (const [, other] of cases) {
       if (other !== heading)
-        assert.doesNotMatch(body, new RegExp(`# Review Superwall — ${other}`));
+        assert.doesNotMatch(body, new RegExp(`# Review Superwall - ${other}`));
     }
   }
 });

@@ -1,6 +1,6 @@
 <task>
 {{#prior_report}}
-<prior_review note="a setup review was already run for this app — fix its verified findings">
+<prior_review note="a setup review was already run for this app - fix its verified findings">
 {{prior_report}}
 </prior_review>
 

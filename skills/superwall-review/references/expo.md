@@ -1,4 +1,4 @@
-# Review Superwall — Expo
+# Review Superwall - Expo
 
 You are reviewing an existing Expo integration using `expo-superwall`. Complete
 the whole checklist; placements are one part of it.
@@ -91,7 +91,7 @@ Review `useSuperwallEvents` only when the app intends to forward analytics.
 Run the read-only CLI cross-checks from `SKILL.md`. Verify the app/platform keys,
 products, entitlements, paywall products, campaigns, and current presentation
 placements form a usable chain. Cite IDs where available. In fix mode, run the
-project's native Expo build/typecheck path—not only hot reload.
+project's native Expo build/typecheck path - not only hot reload.
 
 ## Fix-mode boundaries
 

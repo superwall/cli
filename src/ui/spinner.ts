@@ -1,6 +1,9 @@
 import { ui } from "./index";
 
-export async function withSpinner<T>(label: string, work: () => Promise<T>): Promise<T> {
+export async function withSpinner<T>(
+  label: string,
+  work: () => Promise<T>,
+): Promise<T> {
   const spin = ui.spinner();
   spin.start(label);
   try {

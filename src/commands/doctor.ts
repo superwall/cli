@@ -36,11 +36,11 @@ export const runDoctor = defineCommand({
             "Project",
             `${top.framework.name}${top.details ? ` · ${top.details}` : ""}`,
           ]
-        : scan.comingSoon[0]
+        : scan.unsupported[0]
           ? [
               false,
               "Project",
-              `${scan.comingSoon[0].framework.name} (web — coming soon)`,
+              `${scan.unsupported[0].framework.name} (not supported by this command)`,
             ]
           : [false, "Project", "not detected"],
       ...(existing
@@ -69,7 +69,7 @@ export const runDoctor = defineCommand({
           ? (session.userEmail ?? session.orgName ?? "yes")
           : apiKeyFromEnv()
             ? "via SUPERWALL_API_KEY"
-            : "no — run `superwall login`",
+            : "no - run `superwall login`",
       ],
     ];
 

@@ -5,7 +5,9 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   if (!cmd) return false;
   return new Promise((resolve) => {
     try {
-      const child = spawn(cmd.command, cmd.args, { stdio: ["pipe", "ignore", "ignore"] });
+      const child = spawn(cmd.command, cmd.args, {
+        stdio: ["pipe", "ignore", "ignore"],
+      });
       child.on("error", () => resolve(false));
       child.on("close", (code) => resolve(code === 0));
       child.stdin.write(text);

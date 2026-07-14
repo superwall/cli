@@ -1,16 +1,16 @@
 ---
 name: superwall-migrate
-description: Migrate an app's SDK integration from RevenueCat / Adapty / Qonversion to Superwall — swap the provider's SDK calls for Superwall's and recreate products, entitlements, campaigns, and placements. Paywalls are rebuilt in the editor; subscriber state stays store-side. Use when replacing another paywall or billing SDK with Superwall.
+description: Migrate a mobile app from RevenueCat, Adapty, or Qonversion to Superwall. Replaces provider SDK calls and recreates products, entitlements, campaigns, and placements. Subscriber state remains in the stores, and paywall designs must be rebuilt. Use when replacing another paywall or billing SDK with Superwall.
 ---
 
 # Migrate to Superwall
 
-> **Important — what does not migrate:**
+> **Important - what does not migrate:**
 > - Paywall designs are rebuilt from scratch in the Superwall editor.
 > - Historical analytics and attribution stay in the old provider.
 > - Adapty/Qonversion subscribers do not move server-side; existing purchases are
 >   recovered from the store through Restore Purchases.
-> - RevenueCat server-side migration is coming soon, not shipped; do not rely on it.
+> - RevenueCat server-side migration is not available. Do not rely on it.
 
 ## Docs access
 

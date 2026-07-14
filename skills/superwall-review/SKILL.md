@@ -1,6 +1,6 @@
 ---
 name: superwall-review
-description: Audit an existing Superwall SDK setup end to end across configuration, purchasing, subscription state, identity, deep links, Web Checkout readiness, placements, campaigns, products, entitlements, paywalls, and analytics. Use for reviewing or safely fixing an existing iOS, Expo, React Native, or Flutter integration; NOT for first-time setup or provider migration.
+description: Audit an existing Superwall SDK setup across configuration, purchasing, subscription state, identity, deep links, Web Checkout readiness, placements, campaigns, products, entitlements, paywalls, and analytics. Use to review or safely fix an existing iOS, Expo, React Native, or Flutter integration. Do not use for first-time setup or provider migration.
 ---
 
 # Review an existing Superwall setup
@@ -28,7 +28,7 @@ separates optional opportunities from required fixes.
 | Purchases & subscriptions | Exactly one deliberate purchase path: Superwall default, RevenueCat, or a custom controller; restores and status sync match that path. |
 | Identity & attributes | Authenticated apps identify after login, reset/sign out on logout, and set useful targeting attributes without sensitive data. |
 | Deep links | App URL entry points forward URLs to `handleDeepLink`, enabling the standard `deepLink_open` placement and preview links. |
-| Web Checkout | If used or intended, redirects and redemption match the purchase path. If absent, describe readiness as optional—not broken setup. |
+| Web Checkout | If used or intended, redirects and redemption match the purchase path. If absent, describe readiness as optional - not broken setup. |
 | Placements | Valuable moments are registered intentionally; real gates put controllable work in the feature callback; code and campaign names agree where presentation is expected. |
 | Dashboard & store | Products, entitlements, paywalls, campaigns, placements, and store identifiers form a usable chain. |
 | Analytics & lifecycle | Delegate/event forwarding is coherent and custom lifecycle events do not accidentally duplicate standard placements. |

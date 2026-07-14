@@ -105,7 +105,7 @@ function placementsOf(campaign: Row): CampaignPlacement[] {
 
 function campaignSummary(campaigns: Row[]): string {
   if (!campaigns.length) {
-    return "No campaigns exist yet — the app will likely need at least one.";
+    return "No campaigns exist yet - the app will likely need at least one.";
   }
   return campaigns
     .map((campaign) => {

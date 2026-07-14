@@ -96,7 +96,7 @@ test("JSON errors use one stable machine-readable schema", async () => {
   assert.equal(process.exitCode, 1);
 });
 
-test("--no-ui and --no-interactive disable prompts independently of TTY detection", async () => {
+test("--no-interactive disables prompts without changing the renderer", async () => {
   const states: Array<{ mode: string; interactive: boolean }> = [];
   const definition = {
     name: "test",
@@ -110,7 +110,6 @@ test("--no-ui and --no-interactive disable prompts independently of TTY detectio
     waitForPaint: false,
   };
 
-  await executeCommand(definition, argv({ ui: false }), runtime);
   await executeCommand(definition, argv({ interactive: false }), runtime);
   await executeCommand(
     { ...definition, output: "both" as const },
@@ -122,12 +121,16 @@ test("--no-ui and --no-interactive disable prompts independently of TTY detectio
     argv(),
     runtime,
   );
+  await executeCommand(definition, argv(), {
+    ...runtime,
+    nonInteractive: true,
+  });
 
   assert.deepEqual(states, [
-    { mode: "text", interactive: false },
     { mode: "rich", interactive: false },
     { mode: "json", interactive: false },
     { mode: "rich", interactive: false },
+    { mode: "text", interactive: false },
   ]);
 });
 

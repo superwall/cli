@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { defineCommand, type CommandContext } from "@/command";
+import { requireOrg } from "@/core/account/org";
 import { apiCall } from "@/util/api-output";
 
 export const runQuery = defineCommand({
@@ -8,11 +9,7 @@ export const runQuery = defineCommand({
   interaction: "none",
   output: "both",
   async run(ctx) {
-    const organizationId = ctx.api.org.id;
-    if (!organizationId)
-      throw new Error(
-        "Your login has no organization. Run `superwall login` again.",
-      );
+    const { id: organizationId } = await requireOrg(ctx.api, ctx.interactive);
 
     const sql = readSql(ctx);
     const params = ctx.json ? "?default_format=JSON" : "";
@@ -52,7 +49,7 @@ function readSql(ctx: CommandContext): string {
   const file = ctx.argv.file as string | undefined;
   if (inline && file)
     throw new Error(
-      "Pass SQL as an argument, with --file, or on stdin — choose one.",
+      "Pass SQL as an argument, with --file, or on stdin - choose one.",
     );
 
   const value = inline ?? (file ? readFileSync(file, "utf8") : readStdin());

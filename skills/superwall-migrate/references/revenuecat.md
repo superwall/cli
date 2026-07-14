@@ -10,33 +10,32 @@ This migrates the **SDK integration**, not the whole product. Checklist:
 - [ ] Map products / entitlements / presentation call sites (§1)
 - [ ] Re-create products, entitlements, campaign + placements in Superwall via CLI (§4)
 - [ ] Swap SDK calls (configure, entitlement reads, presentation → placement, identify) (§5)
-- [ ] **Confirm subscription state reaches Superwall** — grep for `purchase(`, `Transaction.updates`,
+- [ ] **Confirm subscription state reaches Superwall** - grep for `purchase(`, `Transaction.updates`,
   `Transaction.currentEntitlements`, `BillingClient`, or any purchase call site *outside* Superwall.
   If ANY purchase can happen without Superwall making it (Mode B / Mode C), verify state is synced
-  via a `PurchaseController`, observer mode, or a manual `subscriptionStatus` set — otherwise
+  via a `PurchaseController`, observer mode, or a manual `subscriptionStatus` set - otherwise
   Superwall shows paywalls to paying users (§2)
-- [ ] **Inventory side-effects in RC purchase/restore callbacks before deleting** — backend sync
-  POSTs, analytics (Singular/PostHog/TikTok/…), attribution, post-purchase navigation — and reroute
+- [ ] **Inventory side-effects in RC purchase/restore callbacks before deleting** - backend sync
+  POSTs, analytics (Singular/PostHog/TikTok/…), attribution, post-purchase navigation - and reroute
   each into a `SuperwallDelegate` (§5 "Side-effects")
 - [ ] **Identity lifecycle**: `identify` at login/session-restore; `reset()` on EVERY sign-out path
   (logout, account deletion, forced 401) (§5)
 - [ ] **Inventory ALL other purchase stacks** (SwiftyStoreKit, `SKPaymentQueue`, IAPManager-style
-  singletons) — remove or explicitly retire; one transaction finisher only (§3)
+  singletons) - remove or explicitly retire; one transaction finisher only (§3)
 - [ ] **Dashboard account gate**: `superwall apps list --json` must show the app matching the code's
   `pk_` key / bundle id BEFORE any create; wrong account → stop dashboard work loudly (§4)
 - [ ] Build + verify each placement; Restore Purchases as an existing subscriber (§7)
 - [ ] FULL only: remove RC dependency once verified
 - [ ] Hand back to user: **rebuild paywalls in the editor**, attach products, connect ASC/Play
 
-> **Important — what does NOT migrate:**
-> - **RC paywall designs** cannot be imported — they are **rebuilt** in the Superwall editor.
+> **Important - what does NOT migrate:**
+> - **RC paywall designs** cannot be imported - they are **rebuilt** in the Superwall editor.
 > - **Historical analytics / attribution** stays in RevenueCat.
 > - **Subscriber base:** existing subscribers keep access via device-side **Restore Purchases**
->   (their purchases live with the store, not RC). A server-side **subscription migration from
->   RevenueCat is coming soon** via the dashboard ([superwall.com/dashboard](https://superwall.com/dashboard)) —
->   not shipped yet, don't depend on it.
+>   because their purchases live with the store, not RevenueCat. Server-side subscription
+>   migration from RevenueCat is not available. Do not depend on it.
 
-## Docs access — fetch live, don't trust baked text
+## Docs access - fetch live, don't trust baked text
 
 ```bash
 curl -sL https://superwall.com/docs/llms.txt                                             # index
@@ -54,31 +53,31 @@ curl -sL https://superwall.com/docs/ios/guides/advanced-configuration.md        
 | Offering (remote set of packages) | **Paywall** + **Campaign** | RC picks products remotely via Offering; Superwall picks the whole paywall (products included) remotely via Campaign rules. |
 | Entitlement (e.g. `pro`) | **Entitlement** (re-created) | 1:1. Recreate each RC entitlement id as a Superwall entitlement. |
 | `customerInfo.entitlements.active` | `Superwall.shared.subscriptionStatus` (`.active(Set<Entitlement>)` / `.inactive` / `.unknown`) | Status is device-derived in FULL mode. |
-| RC Paywalls (RC's paywall UI) | **Paywall** (rebuilt in editor), shown by **placement** | Design does NOT import — see below. |
-| Manual "should I show a paywall?" gating in code | **register(placement:)** — campaign decides | |
+| RC Paywalls (RC's paywall UI) | **Paywall** (rebuilt in editor), shown by **placement** | Design does NOT import - see below. |
+| Manual "should I show a paywall?" gating in code | **register(placement:)** - campaign decides | |
 
 **Mental-model shift.** With RC you check entitlement status, then decide in code whether to
 fetch an offering and present a paywall. With Superwall you **register a placement at the call
 site** (`register(placement: "start_workout") { … }`) and the **campaign** decides whether a
 paywall shows, which one, and A/B variant. Move the *decision* out of the app and into the
 dashboard. The trailing feature closure runs when the user is entitled (gated) or always
-(non-gated) — see §6.
+(non-gated) - see §6.
 
-## 2. Three modes — decide who owns purchases first
+## 2. Three modes - decide who owns purchases first
 
 Removing RevenueCat is not the whole decision. Once RC is gone, *something* still has to
 purchase, restore, and **tell Superwall who is subscribed**. Superwall only auto-detects
 subscription state when its own SDK made the purchase. Pick the mode that matches the app you
-actually have — the middle one is the easiest to get wrong.
+actually have - the middle one is the easiest to get wrong.
 
-### Mode A — FULL, Superwall owns purchases (default, simplest)
+### Mode A - FULL, Superwall owns purchases (default, simplest)
 Remove RevenueCat entirely. Superwall's SDK handles purchase, restore, and entitlement
 computation from the device's App Store / Play records. No `PurchaseController`, no manual status
 setting. Use this unless the app has its own checkout UI or billing code you're keeping.
 
-### Mode B — FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
-RevenueCat is gone, but the app still buys through **its own code** — a custom purchase screen,
-direct StoreKit 2 / Play Billing, or a home-grown billing layer — and uses Superwall *only* to
+### Mode B - FULL, app keeps its own purchase flow (custom UI / direct StoreKit or Play Billing)
+RevenueCat is gone, but the app still buys through **its own code** - a custom purchase screen,
+direct StoreKit 2 / Play Billing, or a home-grown billing layer - and uses Superwall *only* to
 show paywalls and register placements. This is the mode that silently breaks: Superwall does NOT
 observe purchases it didn't make, so unless you sync state it thinks **every** user is unsubscribed
 and shows paywalls to people who already pay.
@@ -86,16 +85,16 @@ and shows paywalls to people who already pay.
 > **Important:** From the advanced-configuration doc, verbatim: "You **must** set
 > `Superwall.shared.subscriptionStatus` every time the user's subscription status changes,
 > otherwise the SDK won't know who to show a paywall to." In this mode you MUST do exactly ONE of:
-> 1. **Implement a `PurchaseController`** — route your purchase/restore through it and set
+> 1. **Implement a `PurchaseController`** - route your purchase/restore through it and set
 >    `subscriptionStatus` from it (same controller shape as §5, but calling your own billing code
 >    instead of RC).
-> 2. **Enable observer mode** — `SuperwallOptions().shouldObservePurchases = true`. Per the doc,
->    observer mode "solely reports transaction completions" (revenue tracking) — entitlement/
+> 2. **Enable observer mode** - `SuperwallOptions().shouldObservePurchases = true`. Per the doc,
+>    observer mode "solely reports transaction completions" (revenue tracking) - entitlement/
 >    subscriptionStatus is kept current by Superwall's server-side pipeline (App Store Server
 >    Notifications + the dashboard product → entitlement mapping), so that mapping MUST exist for
 >    gating to work. You then CANNOT call `Superwall.shared.purchase(...)`.
 >    (`curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`)
-> 3. **Push status manually** — after every purchase / restore / expiry, set
+> 3. **Push status manually** - after every purchase / restore / expiry, set
 >    `Superwall.shared.subscriptionStatus` yourself (e.g. from a `Transaction.currentEntitlements`
 >    read plus a `Transaction.updates` listener on iOS).
 
@@ -106,7 +105,7 @@ import SuperwallKit
 import StoreKit
 
 // Call once on launch, AND keep a `Transaction.updates` listener running so later
-// renewals/expiries/refunds re-run this — status must be pushed on EVERY change.
+// renewals/expiries/refunds re-run this - status must be pushed on EVERY change.
 func syncSubscriptionStatus() async {
   var purchasedProductIds: Set<String> = []
   for await verificationResult in Transaction.currentEntitlements {
@@ -120,7 +119,7 @@ func syncSubscriptionStatus() async {
   }
 }
 ```
-Expo / React Native and Flutter don't assign `subscriptionStatus` directly — they call
+Expo / React Native and Flutter don't assign `subscriptionStatus` directly - they call
 `Superwall.shared.setSubscriptionStatus(...)` (RN uses `SubscriptionStatus.Active(entitlementIds)` /
 `.Inactive()`). Confirm the exact shape per framework:
 ```bash
@@ -129,7 +128,7 @@ curl -sL https://superwall.com/docs/expo/quickstart/tracking-subscription-state.
 curl -sL https://superwall.com/docs/flutter/quickstart/tracking-subscription-state.md
 ```
 
-### Mode C — PAYWALLS-ONLY, RevenueCat stays the purchase controller
+### Mode C - PAYWALLS-ONLY, RevenueCat stays the purchase controller
 Keep RevenueCat for purchases/receipts/webhooks; Superwall only shows paywalls. Implement a
 `PurchaseController` that forwards buys to RC and mirror RC's `customerInfo` into
 `Superwall.shared.subscriptionStatus` (§5). Use when RC's server-side entitlements, integrations, or
@@ -144,7 +143,7 @@ Web-checkout variants: `.../guides/web-checkout/using-revenuecat` per framework.
 `options.shouldObservePurchases = true` on `SuperwallOptions`. Superwall records revenue but you
 CANNOT call `Superwall.shared.purchase(...)`. `curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`
 
-## 3. Codebase inventory — grep these symbols
+## 3. Codebase inventory - grep these symbols
 
 **iOS (Swift, `RevenueCat`):**
 - Config: `Purchases.configure(withAPIKey:` , `Purchases.logLevel`, `Purchases.shared.delegate`, `PurchasesDelegate`
@@ -168,13 +167,13 @@ CANNOT call `Superwall.shared.purchase(...)`. `curl -sL https://superwall.com/do
 
 Produce: list of product ids, entitlement ids, and one row per presentation call site → proposed `snake_case` placement.
 
-**Beyond RC — sweep the whole billing surface (real apps carry layers):**
+**Beyond RC - sweep the whole billing surface (real apps carry layers):**
 - Other purchase stacks: `SwiftyStoreKit`, `SKPaymentQueue`, `Transaction.updates`, `IAPManager`,
-  `StoreObserver`, Play `BillingClient` — each is a competing transaction finisher; plan removal or
+  `StoreObserver`, Play `BillingClient` - each is a competing transaction finisher; plan removal or
   explicit retirement for every one.
 - Existing Superwall wrappers: grep `Superwall.configure`, `SWPaywallManager`/`*PaywallManager`
-  singletons — hybrid apps often already configure Superwall once; never add a second configure.
-- ALL sign-out paths: logout screens, account-deletion flows, 401/session-expiry handlers — each
+  singletons - hybrid apps often already configure Superwall once; never add a second configure.
+- ALL sign-out paths: logout screens, account-deletion flows, 401/session-expiry handlers - each
   needs `Superwall.shared.reset()`.
 - Purchase-callback side-effects: backend POSTs, analytics, attribution, navigation (see §5
   "Side-effects").
@@ -194,7 +193,7 @@ superwall products create com.app.pro_monthly --name "Pro Monthly" --project <pr
 superwall products create com.app.pro_yearly --name "Pro Yearly" --project <projectId> --json
 ```
 Product ids MUST equal the existing App Store / Play SKUs (import via ASC connection instead of
-manual create when possible — `superwall asc keys set … --json`). Then one campaign with
+manual create when possible - `superwall asc keys set --help`). Then one campaign with
 a placement per call site:
 ```bash
 superwall campaigns create "Main paywall" start_workout --project <projectId> --app <appId> --json
@@ -224,7 +223,7 @@ Verify with the same explicit ids: `superwall entitlements list --project <proje
 - **Presentation → placement.** Replace "fetch offering + present paywall" with:
   ```swift
   Superwall.shared.register(placement: "start_workout") {
-    navigation.startWorkout()   // runs when entitled (gated) — see §6
+    navigation.startWorkout()   // runs when entitled (gated) - see §6
   }
   ```
   RN: `Superwall.shared.register({ placement: "start_workout" }, () => {...})`.
@@ -236,16 +235,16 @@ Verify with the same explicit ids: `superwall entitlements list --project <proje
   ```
 - **Identity.** `Purchases.shared.logIn(id)` → `Superwall.shared.identify(userId: id)`; `logOut()` → `Superwall.shared.reset()`.
   Then grep for sign-out paths logIn/logOut DIDN'T cover: account deletion, forced auth-failure
-  (401) logout, session expiry. Every one needs `reset()` — a missed path leaks the previous user's
+  (401) logout, session expiry. Every one needs `reset()` - a missed path leaks the previous user's
   identity and paywall assignments to the next login. `identify` must run at login AND app-launch
   session-restore, BEFORE any placement can fire.
 - **Attributes.** `Purchases.shared.setAttributes([...])` → `Superwall.shared.setUserAttributes([...])`. Call `identify` BEFORE `setUserAttributes`; `identify` is idempotent.
 - Remove the RevenueCat dependency only after everything builds and is verified.
 
-### Side-effects — reroute what lived inside RC callbacks (FULL mode, CRITICAL)
+### Side-effects - reroute what lived inside RC callbacks (FULL mode, CRITICAL)
 
 Real apps bury critical work inside `PurchaseController.purchase()` / RC delegate callbacks. A
-mechanical swap deletes it and everything still compiles — then production breaks. Seen verbatim in
+mechanical swap deletes it and everything still compiles - then production breaks. Seen verbatim in
 a real migration: the deleted controller's purchase callback was the ONLY caller of a backend
 subscription-sync POST (`syncSubscriptionWithBackend` → server route gating all premium features)
 and the only Singular trial-started tracking call.
@@ -266,19 +265,19 @@ class AppSuperwallDelegate: SuperwallDelegate {
     }
   }
 }
-// Superwall.shared.delegate = AppSuperwallDelegate() — retain it; set right after configure.
+// Superwall.shared.delegate = AppSuperwallDelegate() - retain it; set right after configure.
 ```
 
 - **Backend-gated apps:** if the server checks its own subscription record before unlocking
   features, a device-side purchase that never notifies the server = paying users locked out.
-  Keep the sync (delegate POST above) or move gating to Superwall entitlements — and VERIFY the
+  Keep the sync (delegate POST above) or move gating to Superwall entitlements - and VERIFY the
   backend route accepts the new payload (legacy routes often expect provider-specific ids like an
   RC app-user-id).
 - **Analytics/attribution parity:** every event the old callbacks emitted (trial started, purchase,
   restore) must fire from the delegate, or configure the equivalent dashboard integration
   (Settings → Integrations) and verify events arrive before removing the client-side calls.
 
-### PAYWALLS-ONLY mode — iOS `PurchaseController` (verbatim from docs)
+### PAYWALLS-ONLY mode - iOS `PurchaseController` (verbatim from docs)
 ```swift
 import SuperwallKit
 import RevenueCat
@@ -335,16 +334,16 @@ Peek without presenting: `Superwall.shared.getPresentationResult(forPlacement:)`
 ## 7. Order of operations + safety
 
 1. Re-create entitlements, products, campaign + placements in the dashboard (CLI). Import products from ASC/Play so ids match.
-2. **Rebuild** paywalls in the editor and attach products (hand-back to user — designs do not import).
+2. **Rebuild** paywalls in the editor and attach products (hand-back to user - designs do not import).
 3. Add Superwall SDK alongside RC (don't rip RC yet). Configure it.
 4. Replace presentation call sites with `register(placement:)`; replace entitlement reads with `subscriptionStatus`.
 5. Build, run, present each placement; **Restore Purchases** as an existing subscriber and confirm `subscriptionStatus.isActive`.
 6. FULL: remove `PurchaseController` + the RevenueCat dependency. PAYWALLS-ONLY: keep RC + controller.
 7. Never delete RC dashboard/webhook config until verified in production.
 
-Existing subscribers keep access without any server-side data move — Superwall reads status from the
-device's App Store / Play records after **Restore Purchases**. (A dashboard-driven subscription
-migration from RevenueCat is coming soon but not yet available.)
+Existing subscribers keep access without any server-side data move - Superwall reads status from the
+device's App Store / Play records after **Restore Purchases**. Dashboard-driven subscription
+migration from RevenueCat is not available.
 
 ## 8. Pitfalls
 
@@ -357,10 +356,10 @@ migration from RevenueCat is coming soon but not yet available.)
 - **StoreKit listener conflicts.** Two SDKs observing StoreKit transactions cause duplicate grants/races. Pick one owner.
 - **Observer-mode flag.** `shouldObservePurchases = true` disables `Superwall.shared.purchase`. Only set it in observer (analytics-only) mode, never in FULL.
 - **Entitlement id mismatch.** Superwall entitlement ids must exactly match the RC entitlement keys you mirror (`pro` ≠ `Pro`).
-- **Cache during switchover.** Right after swapping SDKs, status may read `.unknown`/`.inactive` until the first `customerInfoStream`/StoreKit sync — prompt Restore Purchases if a known subscriber looks free.
+- **Cache during switchover.** Right after swapping SDKs, status may read `.unknown`/`.inactive` until the first `customerInfoStream`/StoreKit sync - prompt Restore Purchases if a known subscriber looks free.
 - **SK1 vs SK2.** The iOS controller expects a SK2 product (`product.sk2Product`); don't force Superwall to StoreKit 1 via `SuperwallOption`, or `purchase(product:)` gets no SK2 product.
 - **identify order.** Call `identify` before `setUserAttributes`, or attributes attach to an anonymous user.
-- **Deleted side-effects.** Removing a `PurchaseController` deletes everything inside it — backend
+- **Deleted side-effects.** Removing a `PurchaseController` deletes everything inside it - backend
   subscription sync, analytics, attribution. Builds stay green; production breaks. Reroute via
   `SuperwallDelegate` FIRST (§5 "Side-effects").
 - **Identity leakage.** No `reset()` on logout/account-deletion/401 paths → next user inherits the
@@ -382,7 +381,7 @@ curl -sL https://superwall.com/docs/llms.txt                                    
 ```
 - register(): https://superwall.com/docs/ios/sdk-reference/register · identify(): .../identify · setUserAttributes(): .../setUserAttributes
 
-`PurchasingError` enum (referenced by the iOS controller) — define alongside it:
+`PurchasingError` enum (referenced by the iOS controller) - define alongside it:
 ```swift
 enum PurchasingError: LocalizedError { case sk2ProductNotFound
   var errorDescription: String? { "Superwall didn't pass a StoreKit 2 product to purchase." } }

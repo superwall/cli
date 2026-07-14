@@ -1,4 +1,4 @@
-# Review Superwall — Flutter
+# Review Superwall - Flutter
 
 You are reviewing an existing Flutter integration using `superwallkit_flutter`.
 Complete the whole checklist; placements are one part of it.

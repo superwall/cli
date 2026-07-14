@@ -7,10 +7,8 @@ export async function runFallback(installDir: string): Promise<void> {
   const top = scan.apps[0];
 
   if (!top) {
-    if (scan.comingSoon.length) {
-      throw new Error(
-        "Detected a web app — Superwall web support is coming soon.",
-      );
+    if (scan.unsupported.length) {
+      throw new Error("Detected a web app. This command supports mobile apps.");
     }
     throw new Error(`No ${SUPPORTED_LABEL} app found here.`);
   }
@@ -30,11 +28,11 @@ export async function runFallback(installDir: string): Promise<void> {
   );
   ui.note(
     [
-      "For a hands-free setup, install one of these and re-run the wizard:",
-      "  • Claude Code  →  npm i -g @anthropic-ai/claude-code",
-      "  • Codex        →  npm i -g @openai/codex",
+      "For automated setup, install an agent and run `superwall integrate` again:",
+      "Claude Code: npm install --global @anthropic-ai/claude-code",
+      "Codex: npm install --global @openai/codex",
     ].join("\n"),
-    "Want it automated?",
+    "Automated setup",
   );
   ui.outro("Re-run `superwall integrate` after installing an agent.");
 }

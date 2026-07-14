@@ -11,7 +11,10 @@ export interface AscCredentials {
 
 function ascBase(api: SuperwallApi): string {
   const orgId = api.org.id;
-  if (!orgId) throw new Error("No organization in the session — run `superwall login` again.");
+  if (!orgId)
+    throw new Error(
+      "No organization selected - run `superwall orgs use <id|name>` first.",
+    );
   return `/v2/organizations/${orgId}/app-store-connect`;
 }
 
@@ -20,7 +23,10 @@ export async function listAscConfigs(api: SuperwallApi): Promise<Row[]> {
   return res.data ?? [];
 }
 
-export function createAscConfig(api: SuperwallApi, c: AscCredentials): Promise<Row> {
+export function createAscConfig(
+  api: SuperwallApi,
+  c: AscCredentials,
+): Promise<Row> {
   return api.post<Row>(ascBase(api), {
     key_id: c.keyId,
     issuer_id: c.issuerId,
@@ -29,7 +35,10 @@ export function createAscConfig(api: SuperwallApi, c: AscCredentials): Promise<R
   });
 }
 
-export function deleteAscConfig(api: SuperwallApi, teamId: string): Promise<{ success: boolean }> {
+export function deleteAscConfig(
+  api: SuperwallApi,
+  teamId: string,
+): Promise<{ success: boolean }> {
   return api.del<{ success: boolean }>(`${ascBase(api)}/${teamId}`);
 }
 
@@ -56,6 +65,10 @@ export function ascProxy<T>(
   }
 }
 
-export function ascProxyGet<T>(api: SuperwallApi, teamId: string, ascPath: string): Promise<T> {
+export function ascProxyGet<T>(
+  api: SuperwallApi,
+  teamId: string,
+  ascPath: string,
+): Promise<T> {
   return ascProxy<T>(api, teamId, "GET", ascPath);
 }

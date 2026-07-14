@@ -1,13 +1,13 @@
 ---
 name: superwall-placements
-description: Place and audit Superwall placements (register / paywall triggers) at the right feature-gate points in an app, and route them to campaigns. Use when adding, reviewing, or debugging where paywalls fire in iOS, Expo, React Native, or Flutter apps.
+description: Add or audit Superwall placements at meaningful feature gates and route them to campaigns. Use when adding, reviewing, or debugging where paywalls fire in iOS, Expo, React Native, or Flutter apps.
 ---
 
 # Superwall placements
 
 A **placement** is a named event you fire at a meaningful moment. You register it,
 optionally with a `feature` callback. Superwall evaluates your dashboard campaign
-on-device and decides — remotely — whether to show a paywall and whether the
+on-device and decides - remotely - whether to show a paywall and whether the
 feature is gated. Reading subscription state is valid; avoid a separate local gate
 only when it contradicts a feature that is intentionally controlled by Superwall.
 
@@ -17,20 +17,20 @@ reference for the exact call.
 
 ## Read the strategy playbook FIRST
 
-`references/strategy.md` — the definitive, framework-agnostic guide to where
+`references/strategy.md` - the definitive, framework-agnostic guide to where
 placements go and why. Read it before adding or auditing any placement. It covers:
 
-- **The mental model** — register generously; let campaigns decide what presents.
+- **The mental model** - register generously; let campaigns decide what presents.
   Analytics bridges, fire-and-forget calls, and intentionally unrouted placements
   are valid. Put work in a feature callback when that action should be remotely
   gateable; subscription-state reads remain valid for app state and UI.
 - **Common candidates** (`onboarding_complete`, feature gates, limit-reached,
   upgrade entry, broad-reach lifecycle, win-back), selected for the actual app.
-- **App-type playbook** — concrete placements for editors, fitness, productivity,
+- **App-type playbook** - concrete placements for editors, fitness, productivity,
   content, dating/social, and AI apps.
-- **The audit method** — enumerate the paid surface first, then map surface →
+- **The audit method** - enumerate the paid surface first, then map surface →
   placement and flag the gaps.
-- **Gate depth** — hard gate (paid-only) vs soft/non-gated (upsell), and when each
+- **Gate depth** - hard gate (paid-only) vs soft/non-gated (upsell), and when each
   is right.
 - **Calibration** (no universal count) and **naming rules**.
 
@@ -49,13 +49,13 @@ Exact API, gating semantics, placement examples, audit checklist, and pitfalls:
 
 A placement cannot present a paywall until a campaign routes it in the dashboard:
 
-- `superwall campaigns list --project <id> --app <id> --json` — existing campaigns and placements.
-- `superwall campaigns create "<description>" <placement_name> --project <id> --app <id> --json` — create one with its required first placement.
-- `superwall campaigns placement <campaignId> <placement_name> --project <id> --app <id> --json` — route another placement.
+- `superwall campaigns list --project <id> --app <id> --json` - existing campaigns and placements.
+- `superwall campaigns create "<description>" <placement_name> --project <id> --app <id> --json` - create one with its required first placement.
+- `superwall campaigns placement <campaignId> <placement_name> --project <id> --app <id> --json` - route another placement.
 
 Analytics-only, future, and paused placements may intentionally remain unrouted.
 For placements expected to present now, use one campaign per distinct paywall
-surface—not one per trigger. Don't create duplicates.
+surface - not one per trigger. Don't create duplicates.
 
 ## Docs access
 

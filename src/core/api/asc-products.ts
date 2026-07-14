@@ -23,7 +23,11 @@ function attr(r: AscResource, key: string): string | undefined {
   return typeof v === "string" ? v : undefined;
 }
 
-export async function findAscAppId(api: SuperwallApi, teamId: string, bundleId: string): Promise<string | undefined> {
+export async function findAscAppId(
+  api: SuperwallApi,
+  teamId: string,
+  bundleId: string,
+): Promise<string | undefined> {
   const res = await ascProxyGet<AscListResponse>(
     api,
     teamId,
@@ -38,9 +42,20 @@ export interface AscApp {
   bundleId?: string;
 }
 
-export async function listAscApps(api: SuperwallApi, teamId: string): Promise<AscApp[]> {
-  const res = await ascProxyGet<AscListResponse>(api, teamId, "/v1/apps?limit=200&fields[apps]=bundleId,name");
-  return (res.data ?? []).map((a) => ({ id: a.id, name: attr(a, "name"), bundleId: attr(a, "bundleId") }));
+export async function listAscApps(
+  api: SuperwallApi,
+  teamId: string,
+): Promise<AscApp[]> {
+  const res = await ascProxyGet<AscListResponse>(
+    api,
+    teamId,
+    "/v1/apps?limit=200&fields[apps]=bundleId,name",
+  );
+  return (res.data ?? []).map((a) => ({
+    id: a.id,
+    name: attr(a, "name"),
+    bundleId: attr(a, "bundleId"),
+  }));
 }
 
 export async function fetchUnimportedAscProducts(
@@ -52,10 +67,18 @@ export async function fetchUnimportedAscProducts(
   const byId = new Map<string, AscProduct>();
 
   // Subscriptions first: richer data (period + group) wins over IAP dupes.
-  const groups = await ascProxyGet<AscListResponse>(api, teamId, `/v1/apps/${ascAppId}/subscriptionGroups?limit=200`);
+  const groups = await ascProxyGet<AscListResponse>(
+    api,
+    teamId,
+    `/v1/apps/${ascAppId}/subscriptionGroups?limit=200`,
+  );
   for (const group of groups.data ?? []) {
     const groupName = attr(group, "referenceName") ?? "";
-    const subs = await ascProxyGet<AscListResponse>(api, teamId, `/v1/subscriptionGroups/${group.id}/subscriptions?limit=200`);
+    const subs = await ascProxyGet<AscListResponse>(
+      api,
+      teamId,
+      `/v1/subscriptionGroups/${group.id}/subscriptions?limit=200`,
+    );
     for (const sub of subs.data ?? []) {
       const productId = attr(sub, "productId");
       if (productId && !byId.has(productId)) {
@@ -71,7 +94,11 @@ export async function fetchUnimportedAscProducts(
     }
   }
 
-  const iaps = await ascProxyGet<AscListResponse>(api, teamId, `/v1/apps/${ascAppId}/inAppPurchases?limit=200`);
+  const iaps = await ascProxyGet<AscListResponse>(
+    api,
+    teamId,
+    `/v1/apps/${ascAppId}/inAppPurchases?limit=200`,
+  );
   for (const iap of iaps.data ?? []) {
     const productId = attr(iap, "productId");
     if (productId && !byId.has(productId)) {
