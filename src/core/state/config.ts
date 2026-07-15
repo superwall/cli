@@ -10,10 +10,21 @@ export interface SkillsSync {
   sourceSha?: string;
 }
 
+export interface OnboardedApp {
+  publicApiKey: string;
+  projectId?: string;
+  applicationId?: string;
+}
+
 interface Config {
   defaultApp?: Record<string, string>;
   skillsSync?: SkillsSync;
   telemetry?: { anonymousId?: string; noticeShown?: boolean };
+  onboardingIdempotencyKey?: string;
+  onboarded?: {
+    org?: { id: string; name: string };
+    apps?: Record<string, OnboardedApp>;
+  };
 }
 
 function dir(): string {
@@ -68,6 +79,41 @@ export function getAnonymousId(): string {
   config.telemetry = { ...config.telemetry, anonymousId };
   write(config);
   return anonymousId;
+}
+
+// Org membership and project listings lag for up to a minute after
+// provisioning (server-side auth caching), so the CLI remembers what it
+// created instead of re-asking the API.
+export function getOnboardedOrg(): { id: string; name: string } | undefined {
+  return read().onboarded?.org;
+}
+
+export function setOnboardedOrg(org: { id: string; name: string }): void {
+  const config = read();
+  config.onboarded = { ...config.onboarded, org };
+  write(config);
+}
+
+export function getOnboardedApp(appPath: string): OnboardedApp | undefined {
+  return read().onboarded?.apps?.[appPath];
+}
+
+export function setOnboardedApp(appPath: string, app: OnboardedApp): void {
+  const config = read();
+  config.onboarded = {
+    ...config.onboarded,
+    apps: { ...config.onboarded?.apps, [appPath]: app },
+  };
+  write(config);
+}
+
+export function getOnboardingIdempotencyKey(): string {
+  const config = read();
+  if (config.onboardingIdempotencyKey) return config.onboardingIdempotencyKey;
+  const key = randomUUID();
+  config.onboardingIdempotencyKey = key;
+  write(config);
+  return key;
 }
 
 export function telemetryNoticeShown(): boolean {

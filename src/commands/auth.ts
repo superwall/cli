@@ -1,8 +1,10 @@
 import { defineCommand } from "@/command";
 import { ensureSkillsCurrent } from "@/core/agent/skills";
+import { onboardingHooks } from "@/core/account/onboarding";
 import { track } from "@/core/telemetry";
 import { loginWithApiKey, performLogin } from "@/core/auth/login";
 import { clearSession, loadSession, type Session } from "@/core/auth/storage";
+import { scanProject } from "@/core/project/scan";
 
 export const runLogin = defineCommand({
   name: "login",
@@ -39,6 +41,8 @@ export const runLogin = defineCommand({
         "Browser login requires an interactive terminal. Use `superwall login --api-key <key>`.",
       );
 
+    const scan = await scanProject(ctx.installDir).catch(() => null);
+    const hooks = onboardingHooks(scan?.apps[0]);
     const spin = ui.spinner();
     try {
       const session = await performLogin({
@@ -51,15 +55,12 @@ export const runLogin = defineCommand({
           spin.start("Waiting for you to approve in the browser");
         },
         onStatus: (m) => spin.message(m),
-        onCreateOrg: async () => {
-          const name = await ui.text({
-            message: "Welcome to Superwall! Name your organization",
-            placeholder: "My Company",
-            validate: (v) => (v?.trim() ? undefined : "Required"),
-          });
-          spin.start("Creating your account");
-          return name === null ? null : name.trim();
+        onOnboard: async () => {
+          const setup = await hooks.onOnboard();
+          if (setup) spin.start("Creating your account");
+          return setup;
         },
+        onProvisioned: hooks.onProvisioned,
       });
       spin.stop(
         `Logged in as \`${session.userEmail ?? "you"}\`${session.orgName ? ` · \`${session.orgName}\`` : ""}`,
@@ -68,7 +69,9 @@ export const runLogin = defineCommand({
       // Skill install failures never fail the login; `superwall skills` retries.
       if (!ctx.json) await ensureSkillsCurrent(false, "login").catch(() => {});
       ui.outro(
-        "You're all set - run `superwall integrate` to set up your app.",
+        hooks.provisioned()?.publicApiKey
+          ? "Your app is ready - run `superwall integrate` to set up the SDK."
+          : "You're all set - run `superwall integrate` to set up your app.",
       );
     } catch (e) {
       spin.stop("Login failed");

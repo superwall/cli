@@ -17,6 +17,8 @@ import {
   platformForIntegration,
 } from "@/core/account/bind";
 import { loadSession } from "@/core/auth/storage";
+import type { ProvisionedApp } from "@/core/auth/login";
+import { getOnboardedApp } from "@/core/state/config";
 import { SuperwallApi } from "@/core/api/client";
 import { discoverPublicApiKey } from "@/core/api/discover";
 import { platformLabel, type Scope } from "@/core/api/resources";
@@ -38,6 +40,7 @@ import {
   ensureAgentDriverReady,
   performLoginWithUi,
   pickApp,
+  recoverUnmatchedScope,
   stage,
 } from "./integrate/app";
 import { ensureSkillsCurrent } from "@/core/agent/skills";
@@ -137,10 +140,13 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     ).catch(() => null);
   }
 
+  const provisionedRef: { current: ProvisionedApp | null } = { current: null };
   const ensureLogin = async (): Promise<boolean> => {
     if (session) return true;
     if (!ctx.interactive || dryRun) return false;
-    const signedIn = await performLoginWithUi();
+    const signedIn = await performLoginWithUi(app, (result) => {
+      provisionedRef.current = result;
+    });
     if (!signedIn) return false;
     session = signedIn;
     if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
@@ -151,6 +157,22 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   const flagKey = (argv.apiKey as string | undefined) ?? apiKeyFromEnv();
   let scope: Scope | null = null;
   let bundleId: string | undefined;
+  // Project listings can 403 for up to a minute after onboarding; reuse what
+  // this machine created instead of asking the API again.
+  if (!apiKey && !flagKey) {
+    const remembered = getOnboardedApp(app.path);
+    if (remembered) {
+      apiKey = remembered.publicApiKey;
+      if (remembered.projectId && remembered.applicationId) {
+        scope = {
+          projectId: remembered.projectId,
+          applicationId: remembered.applicationId,
+          appName: app.name,
+        };
+      }
+      ui.info(`Using \`${app.name}\` - created during onboarding.`);
+    }
+  }
   if (!apiKey && !flagKey) {
     if (!ctx.interactive) {
       if (session) {
@@ -165,24 +187,37 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
         }
       }
     } else if (await ensureLogin()) {
-      try {
-        const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
-          platform: platformForIntegration(app.integration),
-          appName: app.name,
-        });
-        if (!bound) return void ui.warn("Cancelled.");
-        apiKey = bound.apiKey;
-        scope = {
-          projectId: bound.projectId,
-          applicationId: bound.applicationId,
-          appName: app.name,
-        };
-        bundleId = bound.app.bundle_id;
-        ui.success(
-          `Using \`${bound.app.name ?? bound.app.id}\` (${platformLabel(bound.app.platform)})`,
-        );
-      } catch (e) {
-        ui.warn((e as Error).message);
+      const provisioned = provisionedRef.current;
+      if (provisioned?.publicApiKey) {
+        apiKey = provisioned.publicApiKey;
+        if (provisioned.projectId && provisioned.applicationId) {
+          scope = {
+            projectId: provisioned.projectId,
+            applicationId: provisioned.applicationId,
+            appName: app.name,
+          };
+        }
+        ui.success(`Created \`${app.name}\` in Superwall`);
+      } else {
+        try {
+          const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
+            platform: platformForIntegration(app.integration),
+            appName: app.name,
+          });
+          if (!bound) return void ui.warn("Cancelled.");
+          apiKey = bound.apiKey;
+          scope = {
+            projectId: bound.projectId,
+            applicationId: bound.applicationId,
+            appName: app.name,
+          };
+          bundleId = bound.app.bundle_id;
+          ui.success(
+            `Using \`${bound.app.name ?? bound.app.id}\` (${platformLabel(bound.app.platform)})`,
+          );
+        } catch (e) {
+          ui.warn((e as Error).message);
+        }
       }
     }
   }
@@ -275,6 +310,15 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
       bundleId = resolved.bundleId;
     }
   }
+  // Key present but no matching app in the org - most likely the wrong account.
+  // Offer to re-login / rebind rather than silently ending with a broken setup.
+  if (!scope && !dryRun && ctx.interactive && apiKey && (await ensureLogin())) {
+    const recovered = await recoverUnmatchedScope(app, apiKey);
+    if (recovered) {
+      scope = recovered.scope;
+      bundleId = recovered.bundleId;
+    }
+  }
   if (scope) {
     const stageCtx: StageCtx = {
       api: SuperwallApi.fromSession(),
@@ -296,10 +340,10 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     await stage("Step 4 · Paywall", () => runPaywallStage());
     await stage("Step 5 · Verify", () => runVerifyStage(stageCtx));
   } else if (!dryRun && ctx.interactive) {
-    ui.step("Step 2 · Products, Campaigns, Paywall & Verify");
-    ui.info(
-      "Couldn't match this app in your Superwall org - set these up in the dashboard.",
+    ui.error(
+      "Couldn't connect this app to Superwall - set it up in the dashboard, or re-run to try again.",
     );
+    process.exitCode = 1;
   }
 
   ui.outro(`Done.  ${DASHBOARD_URL}`);
@@ -320,18 +364,22 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   const driver = drivers[0]!;
   const fallbackDrivers = drivers.slice(1).map((candidate) => candidate.driver);
   let session = loadSession();
+
+  const app = await pickApp(installDir, ctx.interactive);
+  if (!app) return void ui.warn("Cancelled.");
+
+  const provisionedRef: { current: ProvisionedApp | null } = { current: null };
   const ensureLogin = async (): Promise<boolean> => {
     if (session) return true;
     if (!ctx.interactive || dryRun) return false;
-    const signedIn = await performLoginWithUi();
+    const signedIn = await performLoginWithUi(app, (result) => {
+      provisionedRef.current = result;
+    });
     if (!signedIn) return false;
     session = signedIn;
     if (session.apiKey) process.env.SUPERWALL_API_KEY = session.apiKey;
     return true;
   };
-
-  const app = await pickApp(installDir, ctx.interactive);
-  if (!app) return void ui.warn("Cancelled.");
   setTelemetryTags({
     driver: driver.driver.id,
     framework: app.framework.integration,
@@ -362,16 +410,28 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
   let apiKey = existing.apiKey ?? "";
   if (action.id === "integrate" || action.id === "dashboard-setup") {
     const flagKey = (argv.apiKey as string | undefined) ?? apiKeyFromEnv();
+    if (!apiKey && !flagKey) {
+      const remembered = getOnboardedApp(app.path);
+      if (remembered) {
+        apiKey = remembered.publicApiKey;
+        ui.info(`Using \`${app.name}\` - created during onboarding.`);
+      }
+    }
     if (!apiKey && !flagKey && ctx.interactive && (await ensureLogin())) {
-      try {
-        const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
-          platform: platformForIntegration(app.integration),
-          appName: app.name,
-        });
-        if (!bound) return void ui.warn("Cancelled.");
-        apiKey = bound.apiKey;
-      } catch (e) {
-        ui.warn((e as Error).message);
+      if (provisionedRef.current?.publicApiKey) {
+        apiKey = provisionedRef.current.publicApiKey;
+        ui.success(`Created \`${app.name}\` in Superwall`);
+      } else {
+        try {
+          const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
+            platform: platformForIntegration(app.integration),
+            appName: app.name,
+          });
+          if (!bound) return void ui.warn("Cancelled.");
+          apiKey = bound.apiKey;
+        } catch (e) {
+          ui.warn((e as Error).message);
+        }
       }
     }
     if (!apiKey) {

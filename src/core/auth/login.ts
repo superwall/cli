@@ -1,4 +1,9 @@
 import { API_HOST, AUTH_HOST, CLI_CLIENT_ID, OAUTH_SCOPE } from "@/constants";
+import {
+  getOnboardedOrg,
+  getOnboardingIdempotencyKey,
+  setOnboardedOrg,
+} from "@/core/state/config";
 import { openBrowser } from "./browser";
 import { saveSession, type Session } from "./storage";
 
@@ -29,7 +34,20 @@ export interface LoginOptions {
   clientId?: string;
   onVerify?: (info: { url: string; userCode: string }) => void;
   onStatus?: (message: string) => void;
-  onCreateOrg?: () => Promise<string | null>;
+  onOnboard?: () => Promise<OnboardSetup | null>;
+  onProvisioned?: (result: ProvisionedApp) => void;
+}
+
+export interface OnboardSetup {
+  orgName: string;
+  app?: { name: string; platform: "ios" | "web"; bundleId?: string };
+}
+
+export interface ProvisionedApp {
+  publicApiKey?: string;
+  projectId?: string;
+  applicationId?: string;
+  orgId?: string;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -54,13 +72,15 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
   opts.onVerify?.({ url, userCode: dev.user_code });
   openBrowser(url);
 
-  const { accessToken, refreshToken, expiresIn } = await pollForToken(
+  const { accessToken, refreshToken, expiresIn, idToken } = await pollForToken(
     disc.token_endpoint,
     clientId,
     dev,
     opts.onStatus,
   );
   let apiToken = accessToken;
+
+  if (idToken) await getJson(`${apiHost}/v2/me`, idToken).catch(() => null);
 
   const me = (await getJson(`${apiHost}/v2/me`, apiToken).catch(
     () => null,
@@ -79,29 +99,33 @@ export async function performLogin(opts: LoginOptions = {}): Promise<Session> {
     ...new Map(orgList.map((o) => [String(o.id), o])).values(),
   ];
 
-  // The token is user-scoped, so login only records an org when it's unambiguous.
-  // Multi-org accounts pick one lazily (requireOrg) at the first org-scoped command.
   let org: LoginOrg | undefined;
   let createdNewOrg = false;
   if (uniqueOrgs.length === 0) {
-    if (!opts.onCreateOrg) {
+    // Membership listings lag for up to a minute after provisioning; trust
+    // what this machine created rather than onboarding the same user twice.
+    const remembered = getOnboardedOrg();
+    if (remembered) {
+      org = { id: remembered.id, name: remembered.name };
+    } else if (opts.onOnboard) {
+      const setup = await opts.onOnboard();
+      if (!setup) throw new Error("Cancelled.");
+      opts.onStatus?.("Creating your account…");
+      if (setup.app) {
+        const provisioned = await provisionAccount(apiHost, apiToken, setup);
+        if (provisioned.orgId)
+          org = { id: provisioned.orgId, name: setup.orgName };
+        opts.onProvisioned?.(provisioned);
+      } else {
+        org = await createOrganization(apiHost, apiToken, setup.orgName);
+      }
+      if (org) setOnboardedOrg({ id: String(org.id), name: org.name });
+      createdNewOrg = true;
+    } else {
       throw new Error(
         "Your account has no organization yet - run `superwall login` interactively to create one.",
       );
     }
-    const name = await opts.onCreateOrg();
-    if (!name) throw new Error("Cancelled.");
-    opts.onStatus?.("Creating your organization…");
-    const created = (await postJson(
-      `${apiHost}/v2/me/organizations`,
-      apiToken,
-      { name },
-    )) as {
-      id: number | string;
-      name: string;
-    };
-    org = { id: created.id, name: created.name };
-    createdNewOrg = true;
   } else if (uniqueOrgs.length === 1) {
     org = uniqueOrgs[0]!;
   }
@@ -196,7 +220,12 @@ async function pollForToken(
   clientId: string,
   dev: DeviceAuth,
   onStatus?: (m: string) => void,
-): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number }> {
+): Promise<{
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  idToken?: string;
+}> {
   const deadline = Date.now() + (dev.expires_in ?? 600) * 1000;
   let interval = dev.interval ?? 5;
   while (Date.now() < deadline) {
@@ -214,6 +243,7 @@ async function pollForToken(
       access_token?: string;
       refresh_token?: string;
       expires_in?: number;
+      id_token?: string;
       error?: string;
       error_description?: string;
     };
@@ -222,6 +252,7 @@ async function pollForToken(
         accessToken: d.access_token,
         refreshToken: d.refresh_token,
         expiresIn: d.expires_in,
+        idToken: d.id_token,
       };
     switch (d.error) {
       case "authorization_pending":
@@ -243,6 +274,58 @@ async function pollForToken(
     }
   }
   throw new Error("Login timed out.");
+}
+
+async function createOrganization(
+  apiHost: string,
+  token: string,
+  name: string,
+): Promise<LoginOrg> {
+  const created = (await postJson(`${apiHost}/v2/me/organizations`, token, {
+    name,
+  })) as { id: number | string; name: string };
+  return { id: created.id, name: created.name };
+}
+
+async function provisionAccount(
+  apiHost: string,
+  token: string,
+  setup: OnboardSetup,
+): Promise<ProvisionedApp> {
+  const app = setup.app!;
+  const res = (await postJson(
+    `${apiHost}/internal/v2/onboarding/provision`,
+    token,
+    {
+      idempotency_key: getOnboardingIdempotencyKey(),
+      organization: { name: setup.orgName },
+      applications: [
+        {
+          name: app.name,
+          platform: app.platform,
+          ...(app.bundleId ? { bundle_id: app.bundleId } : {}),
+        },
+      ],
+      marketing_metadata: { source: "cli" },
+    },
+  )) as {
+    project?: {
+      id?: number | string;
+      organization_id?: number | string;
+      applications?: Array<{ id?: number | string; public_api_key?: string }>;
+    };
+  };
+  const created = res.project?.applications?.[0];
+  return {
+    publicApiKey: created?.public_api_key,
+    projectId:
+      res.project?.id !== undefined ? String(res.project.id) : undefined,
+    applicationId: created?.id !== undefined ? String(created.id) : undefined,
+    orgId:
+      res.project?.organization_id !== undefined
+        ? String(res.project.organization_id)
+        : undefined,
+  };
 }
 
 async function refreshAccessToken(

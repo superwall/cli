@@ -1,6 +1,7 @@
 import type { Arguments } from "yargs";
 import type { CommandContext } from "@/command";
 import { requireOrg } from "@/core/account/org";
+import { platformForIntegration } from "@/core/account/bind";
 import { ApiError, type SuperwallApi } from "@/core/api/client";
 import {
   createApplication,
@@ -9,6 +10,7 @@ import {
   createProduct,
   createProject,
   isAppScoped,
+  platformLabel,
   RESOURCES,
   rowName,
   type ProductCreateOpts,
@@ -17,6 +19,7 @@ import {
   type Scope,
   type SubscriptionPeriod,
 } from "@/core/api/resources";
+import { scanProject } from "@/core/project/scan";
 import { apiCall } from "@/util/api-output";
 import { pickScope } from "./scope";
 
@@ -27,6 +30,11 @@ export async function create(
 ): Promise<void> {
   const { ui, json, dryRun, argv } = context;
   const value = argv.value as string | undefined;
+
+  if (resource === "apps") {
+    return createApp(context, api, value);
+  }
+
   if (!value) {
     throw new Error(
       resource === "campaigns"
@@ -38,10 +46,6 @@ export async function create(
     throw new Error(
       'Usage: superwall campaigns create "<description>" <placement>  (campaigns need at least one placement)',
     );
-  }
-
-  if (resource === "apps") {
-    return createApp(context, api, value);
   }
 
   const scope = await pickScope(
@@ -69,18 +73,74 @@ export async function create(
   );
 }
 
+const APP_PLATFORMS = [
+  "ios",
+  "android",
+  "flutter",
+  "react_native",
+  "web",
+] as const;
+
 async function createApp(
   context: CommandContext,
   api: SuperwallApi,
-  name: string,
+  nameArg: string | undefined,
 ): Promise<void> {
-  const { argv, dryRun, json, ui } = context;
-  const platform = argv.platform as string | undefined;
-  if (!platform) {
+  const { argv, dryRun, json, ui, interactive } = context;
+
+  let name = nameArg;
+  let platform = argv.platform as string | undefined;
+
+  if (interactive && (!name || !platform)) {
+    const detected = (await scanProject(context.installDir).catch(() => null))
+      ?.apps[0];
+    if (detected && !name && !platform) {
+      ui.info(
+        `Detected \`${detected.framework.name}\`` +
+          (detected.details ? ` · \`${detected.details}\`` : ""),
+      );
+      const ok = await ui.confirm({
+        message: `Create \`${detected.name}\` in Superwall?`,
+      });
+      if (ok === null) return void ui.warn("Cancelled.");
+      if (ok) {
+        name = detected.name;
+        platform = platformForIntegration(detected.integration);
+      }
+    }
+    if (!name) {
+      const answer = await ui.text({
+        message: "What's your app called?",
+        placeholder: "My App",
+        initialValue: detected?.name,
+        validate: (v) => (v?.trim() ? undefined : "Required"),
+      });
+      if (answer === null) return void ui.warn("Cancelled.");
+      name = answer.trim();
+    }
+    if (!platform) {
+      const answer = await ui.select({
+        message: "Which platform?",
+        options: APP_PLATFORMS.map((p) => ({
+          value: p,
+          label: platformLabel(p),
+        })),
+        initialValue: detected
+          ? platformForIntegration(detected.integration)
+          : "ios",
+      });
+      if (answer === null) return void ui.warn("Cancelled.");
+      platform = answer;
+    }
+  }
+
+  if (!name || !platform) {
     throw new Error(
       "Usage: superwall apps create <name> --platform <ios|android|flutter|react_native|web> [--bundle <id>] [--project <projectId>]",
     );
   }
+
+  const bundle = argv.bundle as string | undefined;
   const target = argv.project as string | undefined;
   if (dryRun) {
     const plan = {
@@ -125,7 +185,7 @@ async function createApp(
         {
           name,
           platform,
-          bundleId: argv.bundle as string | undefined,
+          bundleId: bundle,
         },
       ),
     )) as typeof project;

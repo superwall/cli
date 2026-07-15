@@ -3,14 +3,30 @@ import { withSpinner } from "@/ui/spinner";
 import { SUPPORTED_LABEL } from "@/core/project/frameworks";
 import { scanProject, type DetectedApp } from "@/core/project/scan";
 import type { ExistingIntegration } from "@/core/project/existing";
-import { performLogin } from "@/core/auth/login";
-import type { Session } from "@/core/auth/storage";
+import { performLogin, type ProvisionedApp } from "@/core/auth/login";
+import { onboardingHooks } from "@/core/account/onboarding";
+import {
+  resolveAppBinding,
+  resolveScopeFromKey,
+  platformForIntegration,
+} from "@/core/account/bind";
+import { SuperwallApi } from "@/core/api/client";
+import type { Scope } from "@/core/api/resources";
+import {
+  clearSession,
+  loadSession,
+  type Session,
+} from "@/core/auth/storage";
 import { getHostedStatus } from "@/core/agent/hosted";
 import type { AgentDriver } from "@/core/agent/drivers";
 import { ACTIONS, type ActionId } from "@/core/agent/actions";
 
-export async function performLoginWithUi(): Promise<Session | null> {
+export async function performLoginWithUi(
+  app?: DetectedApp,
+  onProvisioned?: (result: ProvisionedApp) => void,
+): Promise<Session | null> {
   const spin = ui.spinner();
+  const hooks = onboardingHooks(app);
   try {
     const session = await performLogin({
       onVerify: ({ url, userCode }) => {
@@ -20,14 +36,14 @@ export async function performLoginWithUi(): Promise<Session | null> {
         spin.start("Waiting for you to approve in the browser");
       },
       onStatus: (message) => spin.message(message),
-      onCreateOrg: async () => {
-        const name = await ui.text({
-          message: "Welcome to Superwall! Name your organization",
-          placeholder: "My Company",
-          validate: (v) => (v?.trim() ? undefined : "Required"),
-        });
-        spin.start("Creating your account");
-        return name === null ? null : name.trim();
+      onOnboard: async () => {
+        const setup = await hooks.onOnboard();
+        if (setup) spin.start("Creating your account");
+        return setup;
+      },
+      onProvisioned: (result) => {
+        hooks.onProvisioned(result);
+        onProvisioned?.(result);
       },
     });
     spin.stop(`Logged in as \`${session.userEmail ?? "you"}\``);
@@ -36,6 +52,81 @@ export async function performLoginWithUi(): Promise<Session | null> {
     spin.stop("Login failed");
     ui.warn((error as Error).message);
     return null;
+  }
+}
+
+/**
+ * The project has an API key that matches nothing in the logged-in org - most
+ * likely the wrong account. Offer to re-login, rebind, or skip; returns the
+ * resolved scope when a fix works.
+ */
+export async function recoverUnmatchedScope(
+  app: DetectedApp,
+  apiKey: string,
+): Promise<{ scope: Scope; bundleId?: string } | null> {
+  for (;;) {
+    const orgName = loadSession()?.orgName;
+    const orgLabel = orgName ? `\`${orgName}\`` : "your organization";
+    ui.error(
+      `This project's API key (\`${apiKey}\`) doesn't match any app in ${orgLabel}. You might be logged in to the wrong account.`,
+    );
+    const choice = await ui.select({
+      message: "How do you want to fix it?",
+      options: [
+        { value: "relogin", label: "Log in with a different account" },
+        {
+          value: "bind",
+          label: `Connect this app to ${orgLabel} instead`,
+          hint: "creates or picks an app and issues a new API key",
+        },
+        { value: "skip", label: "Skip for now" },
+      ],
+    });
+    if (choice === null || choice === "skip") return null;
+
+    if (choice === "relogin") {
+      clearSession();
+      if (!(await performLoginWithUi(app))) return null;
+      const resolved = await withSpinner("Finding this app in Superwall", () =>
+        resolveScopeFromKey(SuperwallApi.fromSession(), apiKey).catch(
+          () => null,
+        ),
+      );
+      if (resolved) {
+        ui.success(`Found \`${resolved.appName ?? app.name}\``);
+        return {
+          scope: {
+            projectId: resolved.projectId,
+            applicationId: resolved.applicationId,
+            appName: resolved.appName ?? app.name,
+          },
+          bundleId: resolved.bundleId,
+        };
+      }
+      continue;
+    }
+
+    try {
+      const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
+        platform: platformForIntegration(app.integration),
+        appName: app.name,
+      });
+      if (!bound) continue;
+      ui.note(
+        `Your code still uses \`${apiKey}\`.\nReplace it with \`${bound.apiKey}\` so the app talks to ${orgLabel}.`,
+        "Swap the API key",
+      );
+      return {
+        scope: {
+          projectId: bound.projectId,
+          applicationId: bound.applicationId,
+          appName: app.name,
+        },
+        bundleId: bound.app.bundle_id,
+      };
+    } catch (error) {
+      ui.warn((error as Error).message);
+    }
   }
 }
 
