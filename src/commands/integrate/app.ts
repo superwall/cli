@@ -20,6 +20,15 @@ export async function performLoginWithUi(): Promise<Session | null> {
         spin.start("Waiting for you to approve in the browser");
       },
       onStatus: (message) => spin.message(message),
+      onCreateOrg: async () => {
+        const name = await ui.text({
+          message: "Welcome to Superwall! Name your organization",
+          placeholder: "My Company",
+          validate: (v) => (v?.trim() ? undefined : "Required"),
+        });
+        spin.start("Creating your account");
+        return name === null ? null : name.trim();
+      },
     });
     spin.stop(`Logged in as \`${session.userEmail ?? "you"}\``);
     return session;

@@ -47,16 +47,29 @@ test("noninteractive account resolution accepts explicit and existing keys", asy
   assert.equal(project?.apiKey, "pk_project");
 });
 
-test("interactive account fallback asks only for the public API key", async () => {
+test("interactive resolution never prompts for a key - it points back to login", async () => {
+  const previous = process.env.SUPERWALL_API_KEY;
+  delete process.env.SUPERWALL_API_KEY;
   const ui = recordingRenderer();
-  ui.text = async () => "pk_prompted";
+  let prompted = false;
+  ui.text = async () => {
+    prompted = true;
+    return "pk_prompted";
+  };
 
-  const result = await resolveAccount({
-    existing,
-    argv: { _: [], $0: "superwall" },
-    interactive: true,
-    ui,
-  });
-
-  assert.deepEqual(result, { apiKey: "pk_prompted" });
+  try {
+    await assert.rejects(
+      resolveAccount({
+        existing,
+        argv: { _: [], $0: "superwall" },
+        interactive: true,
+        ui,
+      }),
+      /complete the browser login/,
+    );
+    assert.equal(prompted, false);
+  } finally {
+    if (previous === undefined) delete process.env.SUPERWALL_API_KEY;
+    else process.env.SUPERWALL_API_KEY = previous;
+  }
 });

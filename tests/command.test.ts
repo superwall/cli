@@ -89,7 +89,7 @@ test("JSON errors use one stable machine-readable schema", async () => {
   assert.deepEqual(JSON.parse(stdout), {
     error: {
       code: "not_logged_in",
-      message: "Not logged in. Run `superwall login`.",
+      message: "You aren't logged in. Run `superwall login` first.",
     },
   });
   assert.match(stdout, /^\{\n  "error"/);

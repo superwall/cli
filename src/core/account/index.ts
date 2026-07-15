@@ -1,5 +1,4 @@
 import type { Arguments } from "yargs";
-import { DASHBOARD_URL } from "@/constants";
 import type { Renderer } from "@/ui";
 import { apiKeyFromEnv } from "@/util/env";
 import type { ExistingIntegration } from "@/core/project/existing";
@@ -30,17 +29,9 @@ export async function resolveAccount(opts: {
 
   if (flagKey) return { apiKey: flagKey };
 
-  if (!opts.interactive)
-    throw new Error(
-      "No public API key found. Pass --api-key or set SUPERWALL_API_KEY.",
-    );
-
-  opts.ui.info(`Copy the public API key from ${DASHBOARD_URL}.`);
-  const key = await opts.ui.text({
-    message: "Paste your app's public API key",
-    placeholder: "pk_...",
-    validate: (v) => (v?.trim() ? undefined : "Required"),
-  });
-  if (key === null) return null;
-  return { apiKey: key.trim() };
+  throw new Error(
+    opts.interactive
+      ? "Couldn't connect your app - re-run and complete the browser login."
+      : "No public API key found. Pass --api-key or set SUPERWALL_API_KEY.",
+  );
 }

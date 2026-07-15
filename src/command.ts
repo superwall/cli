@@ -189,7 +189,7 @@ function normalizeError(error: unknown): {
   if (error instanceof NotLoggedInError) {
     return {
       code: "not_logged_in",
-      message: "Not logged in. Run `superwall login`.",
+      message: "You aren't logged in. Run `superwall login` first.",
     };
   }
   if (error instanceof ApiError) {

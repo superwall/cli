@@ -20,6 +20,7 @@ import { loadSession } from "@/core/auth/storage";
 import { SuperwallApi } from "@/core/api/client";
 import { discoverPublicApiKey } from "@/core/api/discover";
 import { platformLabel, type Scope } from "@/core/api/resources";
+import { apiKeyFromEnv } from "@/util/env";
 import {
   runProductsStage,
   runPaywallStage,
@@ -147,9 +148,10 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   };
 
   let apiKey = existing.apiKey ?? "";
+  const flagKey = (argv.apiKey as string | undefined) ?? apiKeyFromEnv();
   let scope: Scope | null = null;
   let bundleId: string | undefined;
-  if (!apiKey) {
+  if (!apiKey && !flagKey) {
     if (!ctx.interactive) {
       if (session) {
         const disc = await withSpinner("Finding your app", () =>
@@ -251,7 +253,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   // scripts) must see that the integration is incomplete.
   if (!dryRun && !ctx.interactive && !loadSession()) {
     ui.warn(
-      "Not logged in — headless mode cannot run the placements/campaigns stages. " +
+      "You aren't logged in — headless mode cannot run the placements/campaigns stages. " +
         "Run `superwall login` first. The SDK code changes (if any) were applied, but the integration is INCOMPLETE.",
     );
     process.exitCode = 1;
@@ -359,14 +361,29 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
 
   let apiKey = existing.apiKey ?? "";
   if (action.id === "integrate" || action.id === "dashboard-setup") {
-    const account = await resolveAccount({
-      existing,
-      argv,
-      interactive: ctx.interactive,
-      ui: ctx.ui,
-    });
-    if (!account) return void ui.warn("Cancelled.");
-    apiKey = account.apiKey;
+    const flagKey = (argv.apiKey as string | undefined) ?? apiKeyFromEnv();
+    if (!apiKey && !flagKey && ctx.interactive && (await ensureLogin())) {
+      try {
+        const bound = await resolveAppBinding(SuperwallApi.fromSession(), {
+          platform: platformForIntegration(app.integration),
+          appName: app.name,
+        });
+        if (!bound) return void ui.warn("Cancelled.");
+        apiKey = bound.apiKey;
+      } catch (e) {
+        ui.warn((e as Error).message);
+      }
+    }
+    if (!apiKey) {
+      const account = await resolveAccount({
+        existing,
+        argv,
+        interactive: ctx.interactive,
+        ui: ctx.ui,
+      });
+      if (!account) return void ui.warn("Cancelled.");
+      apiKey = account.apiKey;
+    }
   }
 
   const priorReport =

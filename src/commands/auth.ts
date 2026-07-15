@@ -90,7 +90,7 @@ export const runLogout = defineCommand({
         account: s ? sessionOutput(s) : null,
       });
     }
-    if (!s) return void ctx.ui.info("You weren't logged in.");
+    if (!s) return void ctx.ui.error("You aren't logged in yet.");
     if (ctx.interactive) {
       const ok = await ctx.ui.confirm({
         message: `Log out of Superwall${s.userEmail ? ` (\`${s.userEmail}\`)` : ""}?`,
@@ -109,7 +109,9 @@ export const runWhoami = defineCommand({
     const s = loadSession();
     if (!s) {
       if (ctx.json) return ctx.output.data({ authenticated: false });
-      ctx.ui.info("Not logged in. Run `superwall login`.");
+      ctx.ui.error(
+        "You aren't logged in yet. Run `superwall login` to sign in.",
+      );
       return;
     }
     if (ctx.json) return ctx.output.data(sessionOutput(s));
