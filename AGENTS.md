@@ -14,8 +14,8 @@ The `superwall` CLI is two thin things around the **skills**, which are the prod
    humans use directly.
 
 All agent-facing expertise lives in `skills/` (this repo: task-specific) and
-[superwall/skills](https://github.com/superwall/skills) (public toolkit, source of
-truth, cloned locally at `../skills`). TypeScript never contains domain expertise.
+[superwall/skills](https://github.com/superwall/skills) (public skills repo, source
+of truth, cloned locally at `../skills`). TypeScript never contains domain expertise.
 If you're writing paywall/migration/integration knowledge in a `.ts` file, stop and
 put it in a skill.
 

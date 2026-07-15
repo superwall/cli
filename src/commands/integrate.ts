@@ -39,10 +39,10 @@ import {
   pickApp,
   stage,
 } from "./integrate/app";
+import { ensureSkillsCurrent } from "@/core/agent/skills";
 import {
   copyIntegrationPrompt,
   finish,
-  installAgentSkills,
   printPlan,
   runActionWithUI,
 } from "./integrate/agent";
@@ -197,6 +197,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
   ui.step("Step 1 · Integrate the SDK");
   if (existing.fullyIntegrated) {
     ui.info("SDK already integrated - skipped.");
+    if (!dryRun) await ensureSkillsCurrent();
   } else if (!dryRun) {
     const how = !ctx.interactive
       ? "now"
@@ -234,20 +235,23 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
       actionById["integrate"],
       ctxAction,
     );
-    const spin = ui.spinner();
-    spin.start("Installing Superwall skills for your agent");
-    const ok = await installAgentSkills();
-    spin.stop(ok ? "Superwall skills installed" : "Skill install skipped");
-    if (!ok)
-      throw new Error(
-        "The integration completed, but the Superwall skills could not be installed.",
-      );
+    await ensureSkillsCurrent(true);
   }
 
   // Dashboard stages run whenever we can resolve scope - interactively (after
   // app-binding) OR headless/CI when a session + app key are already present, so
   // `integrate` is fully non-interactive-capable (and benchable end-to-end).
   const canResolveHeadless = !ctx.interactive && !!apiKey && !!loadSession();
+  // Headless with NO session: placements/campaigns stages can't run. Fail LOUDLY
+  // instead of exiting 0 with a silently half-done setup — callers (CI, benches,
+  // scripts) must see that the integration is incomplete.
+  if (!dryRun && !ctx.interactive && !loadSession()) {
+    ui.warn(
+      "Not logged in — headless mode cannot run the placements/campaigns stages. " +
+        "Run `superwall login` first. The SDK code changes (if any) were applied, but the integration is INCOMPLETE.",
+    );
+    process.exitCode = 1;
+  }
   if (
     !dryRun &&
     !scope &&
@@ -382,15 +386,8 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
     await runActionWithUI(driver.driver, fallbackDrivers, action, actionCtx);
   }
 
-  if (action.id === "integrate" && !existing.fullyIntegrated && !dryRun) {
-    const spin = ui.spinner();
-    spin.start("Installing Superwall skills for your agent");
-    const ok = await installAgentSkills();
-    spin.stop(ok ? "Superwall skills installed" : "Skill install skipped");
-    if (!ok)
-      throw new Error(
-        "The integration completed, but the Superwall skills could not be installed.",
-      );
-  }
+  await ensureSkillsCurrent(
+    action.id === "integrate" && !existing.fullyIntegrated,
+  );
   finish(ctx, action);
 }

@@ -3,8 +3,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { formatJson } from "@/util/json";
 
+export interface SkillsSync {
+  cliVersion: string;
+  syncedAt: string;
+  sourceSha?: string;
+}
+
 interface Config {
   defaultApp?: Record<string, string>;
+  skillsSync?: SkillsSync;
 }
 
 function dir(): string {
@@ -39,5 +46,15 @@ export function setDefaultApp(projectId: string, applicationId: string): void {
     ...(config.defaultApp ?? {}),
     [projectId]: applicationId,
   };
+  write(config);
+}
+
+export function getSkillsSync(): SkillsSync | undefined {
+  return read().skillsSync;
+}
+
+export function setSkillsSync(sync: SkillsSync): void {
+  const config = read();
+  config.skillsSync = sync;
   write(config);
 }

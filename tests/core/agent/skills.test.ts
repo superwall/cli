@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { actionById } from "@/core/agent/actions";
-import { loadBundledSkill } from "@/core/agent/skills";
+import { checkSkillsSync, loadBundledSkill } from "@/core/agent/skills";
 
 test("review uses the broad setup skill rather than the placement skill", () => {
   const body = loadBundledSkill("superwall-review", "ios");
@@ -40,6 +40,29 @@ test("review action is read-only and fix action is writable", () => {
   assert.equal(actionById.review.outputMode, "report");
   assert.equal(actionById["review-fix"].capabilities.filesystem, "write");
   assert.equal(actionById["review-fix"].outputMode, "silent");
+});
+
+test("skills sync: stale on missing/changed CLI version, fresh within a day, verify after", () => {
+  const now = Date.parse("2026-07-15T00:00:00Z");
+  const day = 24 * 60 * 60 * 1000;
+  const at = (ms: number) => new Date(ms).toISOString();
+
+  assert.equal(checkSkillsSync(undefined, "1.0.0", now), "stale");
+  const fresh = { cliVersion: "1.0.0", syncedAt: at(now - 60_000), sourceSha: "abc" };
+  assert.equal(checkSkillsSync(fresh, "1.0.0", now), "fresh");
+  assert.equal(checkSkillsSync(fresh, "1.1.0", now), "stale");
+  assert.equal(
+    checkSkillsSync(
+      { cliVersion: "1.0.0", syncedAt: at(now - 2 * day) },
+      "1.0.0",
+      now,
+    ),
+    "verify",
+  );
+  assert.equal(
+    checkSkillsSync({ cliVersion: "1.0.0", syncedAt: "garbage" }, "1.0.0", now),
+    "stale",
+  );
 });
 
 test("missing bundled references fail closed", () => {

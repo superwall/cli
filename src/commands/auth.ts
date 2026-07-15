@@ -1,4 +1,5 @@
 import { defineCommand } from "@/command";
+import { ensureSkillsCurrent } from "@/core/agent/skills";
 import { loginWithApiKey, performLogin } from "@/core/auth/login";
 import { clearSession, loadSession, type Session } from "@/core/auth/storage";
 
@@ -60,6 +61,8 @@ export const runLogin = defineCommand({
       spin.stop(
         `Logged in as \`${session.userEmail ?? "you"}\`${session.orgName ? ` · \`${session.orgName}\`` : ""}`,
       );
+      // Skill install failures never fail the login; `superwall skills` retries.
+      if (!ctx.json) await ensureSkillsCurrent().catch(() => {});
       ui.outro(
         "You're all set - run `superwall integrate` to set up your app.",
       );

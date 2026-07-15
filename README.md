@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://superwall.com/">
+    <img src="https://user-images.githubusercontent.com/3296904/158817914-144c66d0-572d-43a4-9d47-d7d0b711c6d7.png" alt="Superwall" height="100" />
+  </a>
+</p>
+
 # Superwall CLI
 
 The official CLI for managing Superwall from your terminal or coding agent.
@@ -19,18 +25,21 @@ The package provides `superwall` and the short `sw` command.
 
 ## What it does
 
-`superwall integrate` detects the local app and framework, reuses an existing
-Superwall configuration when possible, and connects the app to the selected
-Superwall account. A coding agent installs and configures the SDK. The CLI then
-installs the Superwall agent skills and guides product, campaign, placement,
-paywall, and device verification setup.
+Run `superwall integrate` in your app and the CLI takes it from there. It works
+out what kind of app it's looking at, connects it to your Superwall account
+(reusing an existing configuration if it finds one), and puts your own coding
+agent to work installing and configuring the SDK. Then it installs the
+Superwall agent skills and walks you through the rest: products, campaigns,
+placements, paywalls, and verifying it all on a real device.
 
 ## Commands
 
-Authentication uses device-flow OAuth against `auth.superwall.com`. One login
-authenticates every command. The session is user-scoped; multi-org accounts pick
-an organization the first time an org-scoped command needs one (or with
-`superwall orgs use`).
+You log in once and everything works. `superwall login` runs device-flow OAuth
+against `auth.superwall.com`, and every command shares that session. If your
+account belongs to more than one organization, you pick one the first time a
+command needs it — or ahead of time with `superwall orgs use`. Logging in also
+installs the Superwall agent skills, and the CLI quietly refreshes them when a
+new version ships.
 
 | Command                                          | Description                                           |
 | ------------------------------------------------ | ----------------------------------------------------- |
@@ -45,11 +54,11 @@ Onboarding (agent-driven):
 | `superwall review [--fix]` | Audit an existing setup end to end; `--fix` applies verified, safe fixes.       |
 | `superwall migrate`        | Migrate from RevenueCat / Adapty / Qonversion.                                  |
 
-Every workflow above also takes `--skill`: instead of the CLI orchestrating an
-agent, it prints the full expert playbook - the bundled skill plus the reference
-matching _this_ project's detected framework/provider - so your own agent can
-follow it directly (e.g. `superwall migrate --skill` in a RevenueCat Expo app
-prints the migrate skill + the RevenueCat reference).
+Prefer to drive your own agent? Every workflow above takes `--skill`: instead
+of running an agent for you, the CLI prints the full expert playbook - the
+bundled skill plus the one reference matching the framework or provider it
+detected in _your_ project. `superwall migrate --skill` in a RevenueCat Expo
+app prints the migrate skill with the RevenueCat reference, nothing else.
 
 The dashboard, in your terminal (`--json` on all; pass `--project`/`--app` when more than one exists):
 
@@ -70,10 +79,10 @@ Data & analytics (direct SQL over your organization's ClickHouse data):
 | `superwall query "<sql>" [--json]`            | Run an inline query; `--json` returns ClickHouse's native JSON envelope. |
 | `superwall query --file <query.sql> [--json]` | Run a saved query. SQL can also be piped on stdin.                       |
 
-This is the programmable analytics surface for ad hoc analysis, custom dashboards,
-scheduled reports (for example, a daily MRR update), and agent workflows. It uses
-the logged-in organization and its authenticated session; that credential must
-have `data:read` access.
+Use it for anything you'd build on raw data: ad hoc analysis, custom dashboards,
+scheduled reports (a daily MRR update, say), or agent workflows. Queries run
+against the logged-in organization with your session, which needs `data:read`
+access.
 
 Raw API (Stripe-style, session-authenticated):
 
@@ -83,11 +92,13 @@ Raw API (Stripe-style, session-authenticated):
 | `superwall get \| post \| patch \| delete /v2/... [-d k=v]`              | Any Superwall API endpoint (`-d k=v` string, `k:=v` typed, query params on get/delete).    |
 | `superwall asc <get\|post\|...> /v1/... ` / `asc apps \| products <app>` | The App Store Connect API through Superwall's signed proxy. No `.p8` file or JWT required. |
 
-Toolkit / utility: `superwall skills`, `superwall doctor`.
+Utilities: `superwall skills` (reinstall the agent skills, or pick a subset —
+login and the workflow commands keep them updated on their own),
+`superwall doctor`.
 
-Agents should use `--json`: it is the stable, two-space-indented machine contract,
-never prompts, and returns structured errors. `--no-interactive` disables prompts
-while retaining normal human-readable output.
+If you're an agent (or scripting one), use `--json`: it's the stable machine
+contract - two-space-indented, never prompts, structured errors.
+`--no-interactive` keeps the human-readable output but drops the prompts.
 
 Common flags: `--json`, `--no-interactive`, `--dry-run`,
 `--install-dir <dir>`, `--project <id>`, `--app <id>`.
@@ -120,8 +131,10 @@ Agent-facing expertise is split across two homes by breadth:
 The CLI consumes the internal skills three ways: its headless runner inlines
 SKILL.md + exactly the right reference into the agent prompt (an Expo agent
 never sees Swift docs); `<command> --skill` prints the same composition for
-external agents; and `superwall skills` installs them (plus the public toolkit)
-into the user's agent for keeps.
+external agents; and the CLI installs them (plus the public skills) into the
+user's agent for keeps — automatically at login and after integration, refreshed
+whenever the CLI version changes or the public repo has new commits
+(`superwall skills` is the manual path).
 
 ## How it works
 

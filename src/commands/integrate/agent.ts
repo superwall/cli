@@ -4,7 +4,6 @@ import { blocks } from "@/output";
 import { ui } from "@/ui";
 import { stripReport } from "@/ui/log";
 import { saveReport } from "@/core/state/reports";
-import { installBundledSkills, installToolkit } from "@/core/agent/skills";
 import { runAction } from "@/core/agent/run";
 import { buildCopyPrompt } from "@/core/agent/prompt";
 import { copyToClipboard } from "@/util/clipboard";
@@ -15,12 +14,6 @@ import {
   type WizardAction,
 } from "@/core/agent/actions";
 import type { AgentDriver } from "@/core/agent/drivers";
-
-export async function installAgentSkills(): Promise<boolean> {
-  const publicSkills = await installToolkit();
-  const bundledSkills = await installBundledSkills();
-  return publicSkills.ok && bundledSkills.ok;
-}
 
 export async function copyIntegrationPrompt(
   context: ActionContext,

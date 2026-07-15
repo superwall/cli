@@ -3,15 +3,14 @@ import { withSpinner } from "@/ui/spinner";
 import { defineCommand } from "@/command";
 import {
   SUPERWALL_SKILLS_SOURCE,
-  fetchToolkitSkills,
-  installToolkit,
-  installBundledSkills,
+  fetchPublicSkills,
+  syncSkills,
 } from "@/core/agent/skills";
 
 export const runSkills = defineCommand({
   name: "skills",
   async run(ctx) {
-    ui.intro("Superwall agent toolkit");
+    ui.intro("Superwall agent skills");
 
     let skills = normalizeList(ctx.argv.skill);
     const { dryRun, interactive } = ctx;
@@ -19,7 +18,7 @@ export const runSkills = defineCommand({
     if (!skills && !dryRun && interactive) {
       const available = await withSpinner(
         `Fetching skills from ${SUPERWALL_SKILLS_SOURCE}`,
-        fetchToolkitSkills,
+        fetchPublicSkills,
       );
       const picked = await ui.multiselect({
         message: `Which skills from ${SUPERWALL_SKILLS_SOURCE}? (installs globally)`,
@@ -45,9 +44,7 @@ export const runSkills = defineCommand({
 
     const spin = ui.spinner();
     spin.start(dryRun ? "Resolving" : "Installing skills globally");
-    const pub = await installToolkit({ skills, dryRun });
-    const bundled = await installBundledSkills({ dryRun });
-    const ok = pub.ok && bundled.ok;
+    const { ok, commands } = await syncSkills({ skills, dryRun });
     spin.stop(
       dryRun
         ? "Dry run"
@@ -56,10 +53,7 @@ export const runSkills = defineCommand({
           : "Install failed",
     );
 
-    if (dryRun) {
-      ui.info(pub.command);
-      ui.info(bundled.command);
-    }
+    if (dryRun) for (const command of commands) ui.info(command);
     ui.outro(
       ok
         ? `**Done.** Try: ask your agent to "review my Superwall setup".`

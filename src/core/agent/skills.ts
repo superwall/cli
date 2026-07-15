@@ -1,5 +1,12 @@
 import { readFileSync } from "node:fs";
+import { VERSION } from "@/constants";
+import { ui } from "@/ui";
 import { packagedDir } from "@/util/assets";
+import {
+  getSkillsSync,
+  setSkillsSync,
+  type SkillsSync,
+} from "@/core/state/config";
 import { spawnStream } from "./drivers/spawn";
 
 export type BundledSkillId =
@@ -72,7 +79,7 @@ export const KNOWN_SKILLS: SkillInfo[] = [
   },
 ];
 
-export async function fetchToolkitSkills(): Promise<SkillInfo[]> {
+export async function fetchPublicSkills(): Promise<SkillInfo[]> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${SUPERWALL_SKILLS_SOURCE}/contents/skills`,
@@ -124,21 +131,21 @@ async function fetchSkillSummary(name: string): Promise<string> {
   }
 }
 
-export interface InstallToolkitOptions {
+export interface InstallSkillsOptions {
   skills?: string[];
   cwd?: string;
   dryRun?: boolean;
   onProgress?: (line: string) => void;
 }
 
-export interface InstallToolkitResult {
+export interface InstallSkillsResult {
   ok: boolean;
   command: string;
 }
 
-export async function installToolkit(
-  opts: InstallToolkitOptions = {},
-): Promise<InstallToolkitResult> {
+export async function installPublicSkills(
+  opts: InstallSkillsOptions = {},
+): Promise<InstallSkillsResult> {
   const args = [
     "-y",
     "skills@latest",
@@ -154,8 +161,8 @@ export async function installToolkit(
 
 // `--copy` so the skills live independently of this package's install path.
 export async function installBundledSkills(
-  opts: InstallToolkitOptions = {},
-): Promise<InstallToolkitResult> {
+  opts: InstallSkillsOptions = {},
+): Promise<InstallSkillsResult> {
   return runInstall(
     [
       "-y",
@@ -172,8 +179,8 @@ export async function installBundledSkills(
 
 async function runInstall(
   args: string[],
-  opts: InstallToolkitOptions,
-): Promise<InstallToolkitResult> {
+  opts: InstallSkillsOptions,
+): Promise<InstallSkillsResult> {
   const command = `npx ${args.join(" ")}`;
   if (opts.dryRun) return { ok: true, command };
   const { code } = await spawnStream({
@@ -184,4 +191,99 @@ async function runInstall(
     onStderrLine: (line) => opts.onProgress?.(line),
   });
   return { ok: code === 0, command };
+}
+
+const SHA_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+export type SkillsSyncCheck = "stale" | "fresh" | "verify";
+
+// Bundled skills ship inside this package, so a CLI version change is always
+// stale. The public repo moves on its own: after a day, verify its HEAD commit
+// against the recorded one instead of trusting the clock.
+export function checkSkillsSync(
+  sync: SkillsSync | undefined,
+  cliVersion: string,
+  now: number,
+): SkillsSyncCheck {
+  if (!sync || sync.cliVersion !== cliVersion) return "stale";
+  const syncedAt = Date.parse(sync.syncedAt);
+  if (!Number.isFinite(syncedAt)) return "stale";
+  return now - syncedAt > SHA_CHECK_INTERVAL_MS ? "verify" : "fresh";
+}
+
+async function fetchSourceSha(): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${SUPERWALL_SKILLS_SOURCE}/commits/main`,
+      {
+        headers: { accept: "application/vnd.github+json" },
+        signal: AbortSignal.timeout(6000),
+      },
+    );
+    if (!res.ok) return null;
+    const { sha } = (await res.json()) as { sha?: string };
+    return sha ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function skillsOutOfDate(): Promise<boolean> {
+  const sync = getSkillsSync();
+  const check = checkSkillsSync(sync, VERSION, Date.now());
+  if (check === "stale") return true;
+  if (check === "fresh" || !sync) return false;
+  const head = await fetchSourceSha();
+  // Offline or rate-limited: keep what we have rather than churn.
+  if (!head) return false;
+  if (head !== sync.sourceSha) return true;
+  setSkillsSync({ ...sync, syncedAt: new Date().toISOString() });
+  return false;
+}
+
+export interface SyncSkillsResult {
+  ok: boolean;
+  commands: string[];
+}
+
+export async function syncSkills(
+  opts: InstallSkillsOptions = {},
+): Promise<SyncSkillsResult> {
+  const pub = await installPublicSkills(opts);
+  const bundled = await installBundledSkills(opts);
+  const ok = pub.ok && bundled.ok;
+  if (ok && !opts.dryRun)
+    setSkillsSync({
+      cliVersion: VERSION,
+      syncedAt: new Date().toISOString(),
+      sourceSha: (await fetchSourceSha()) ?? undefined,
+    });
+  return { ok, commands: [pub.command, bundled.command] };
+}
+
+/**
+ * Install or refresh the skills with a spinner. `required` always installs and
+ * throws on failure (fresh integrations must ship with skills); otherwise this
+ * is a quiet refresh that no-ops when the last sync is current.
+ */
+export async function ensureSkillsCurrent(required = false): Promise<void> {
+  if (!required && !(await skillsOutOfDate())) return;
+  const spin = ui.spinner();
+  spin.start(
+    required
+      ? "Installing Superwall skills for your agent"
+      : "Updating Superwall skills",
+  );
+  const { ok } = await syncSkills();
+  spin.stop(
+    ok
+      ? required
+        ? "Superwall skills installed"
+        : "Superwall skills up to date"
+      : "Skill install skipped",
+  );
+  if (required && !ok)
+    throw new Error(
+      "The integration completed, but the Superwall skills could not be installed.",
+    );
 }

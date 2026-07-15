@@ -92,7 +92,7 @@ function printHelp(): void {
       "",
       head("Other commands"),
       row("login, logout, whoami", "Authenticate the CLI"),
-      row("skills", "Install the Superwall agent toolkit"),
+      row("skills", "Install or update the Superwall agent skills"),
       row("doctor", "Check the health of your integration"),
       "",
       pc.bold("Flags:"),
@@ -240,7 +240,7 @@ export async function run(): Promise<void> {
     )
     .command(
       "skills",
-      "Install the Superwall agent toolkit (skills) for your coding agent",
+      "Install or update the Superwall agent skills for your coding agent",
       (y) =>
         y.options({
           skill: {
