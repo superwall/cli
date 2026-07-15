@@ -92,19 +92,49 @@ superwall delete /v2/products/prod_123
 booleans, objects), and `key[sub]=value` nests. On `get` and `delete`, `-d`
 params become query parameters.
 
-The App Store Connect API works the same way, proxied and signed by Superwall
-so there's no `.p8` file or JWT to manage:
+## App Store Connect
+
+The **entire** App Store Connect API, proxied and signed by Superwall — no
+`.p8` file or JWT to manage locally. Connect your credentials once:
 
 ```bash
-superwall asc get /v1/apps
 superwall asc keys set --key-id <id> --issuer <id> --key-file AuthKey.p8
 ```
 
-The proxy is schema-aware. `superwall asc docs /v1/subscriptions post` prints
-the exact request schema (required fields, enums, relationships) from Apple's
-OpenAPI spec, and `asc post`/`asc patch` build the JSON:API body from flat `-d`
-params and reject a malformed body locally before it reaches Apple (`--force`
-skips validation).
+Then it's the raw ASC API with the sharp edges filed off, because the CLI is
+**schema-aware**: it keeps a copy of Apple's own OpenAPI spec (fetched on first
+use, refreshed in the background) and knows every endpoint, field, and enum.
+
+Look up the exact schema for anything — no guessing, no hunting through Apple's
+docs:
+
+```bash
+superwall asc docs                          # browse every resource
+superwall asc docs "introductory offer"     # search by keyword
+superwall asc docs /v1/subscriptions post   # required fields, enums, relationships
+```
+
+Write with flat params. The CLI assembles the JSON:API body for you and
+validates it locally, so a mistake comes back as a precise fix instead of one of
+Apple's opaque `409`s:
+
+```bash
+superwall asc post /v1/subscriptions \
+  -d name="Premium Monthly" -d productId=com.acme.pro \
+  -d subscriptionPeriod=MONTHLY -d group=<groupId>
+```
+
+```
+✗ Invalid POST /v1/subscriptions body:
+  • subscriptionPeriod "MONTHLY" not allowed — use ONE_WEEK|ONE_MONTH|…|ONE_YEAR
+```
+
+Fix the value and it goes through. Shortcuts cover the common reads
+(`asc apps`, `asc products <bundle-id>`, `asc subscriptions <bundle-id>`);
+everything else is `asc get|post|patch|delete /v1/…`. Between the schema lookup
+and the validation, an agent can build and manage your whole ASC catalog —
+groups, subscriptions, prices, introductory offers — without ever memorizing the
+API or eating a silent rejection.
 
 ## For agents and scripts
 
