@@ -97,7 +97,7 @@ When a command is added, renamed, or removed, or its flags/output change, sweep
 and update ALL of:
 
 1. `printHelp()` in `src/cli.ts`
-2. `README.md` command tables + architecture tree
+2. `README.md` command examples (user-facing: runnable code blocks, no internal jargon)
 3. This repo's `skills/**/*.md` (bundled skills reference CLI commands constantly)
 4. `prompts/actions/*.xml` if the harness wrapper mentions commands
 5. **The public repo** `../skills/skills/superwall/` - `SKILL.md` (workflow

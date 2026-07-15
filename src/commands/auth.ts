@@ -1,5 +1,6 @@
 import { defineCommand } from "@/command";
 import { ensureSkillsCurrent } from "@/core/agent/skills";
+import { track } from "@/core/telemetry";
 import { loginWithApiKey, performLogin } from "@/core/auth/login";
 import { clearSession, loadSession, type Session } from "@/core/auth/storage";
 
@@ -17,6 +18,7 @@ export const runLogin = defineCommand({
       try {
         const session = await loginWithApiKey(apiKeyArg);
         spin.stop("Logged in");
+        track("login finished", { status: "success", method: "api_key" });
         if (ctx.json) return ctx.output.data(sessionOutput(session));
         ui.success(
           `Logged in with an API key${session.orgName ? ` · \`${session.orgName}\`` : ""}.`,
@@ -26,6 +28,7 @@ export const runLogin = defineCommand({
         );
       } catch (e) {
         spin.stop("Login failed");
+        track("login finished", { status: "error", method: "api_key" });
         throw e;
       }
       return;
@@ -61,13 +64,15 @@ export const runLogin = defineCommand({
       spin.stop(
         `Logged in as \`${session.userEmail ?? "you"}\`${session.orgName ? ` · \`${session.orgName}\`` : ""}`,
       );
+      track("login finished", { status: "success", method: "oauth" });
       // Skill install failures never fail the login; `superwall skills` retries.
-      if (!ctx.json) await ensureSkillsCurrent().catch(() => {});
+      if (!ctx.json) await ensureSkillsCurrent(false, "login").catch(() => {});
       ui.outro(
         "You're all set - run `superwall integrate` to set up your app.",
       );
     } catch (e) {
       spin.stop("Login failed");
+      track("login finished", { status: "error", method: "oauth" });
       throw e;
     }
   },

@@ -8,6 +8,7 @@ import {
   type OutputMode,
   writeJson,
 } from "@/output";
+import { maybeShowTelemetryNotice, track } from "@/core/telemetry";
 import { selectRenderer } from "@/ui";
 import type { Renderer } from "@/ui/types";
 import { isNonInteractive } from "@/util/env";
@@ -36,6 +37,7 @@ export interface CommandDefinition<Auth extends AuthPolicy = "none"> {
   auth?: Auth;
   interaction?: InteractionPolicy;
   output?: OutputPolicy;
+  telemetry?: "workflow";
   run: (ctx: CommandContext<Auth>) => void | Promise<void>;
 }
 
@@ -99,7 +101,15 @@ export async function executeCommand<Auth extends AuthPolicy>(
     return;
   }
 
+  // Dry runs are smoke tests, not usage.
+  const tracked = definition.telemetry === "workflow" && !argv.dryRun;
+  const startedAt = Date.now();
+
   ui.start();
+  if (tracked) {
+    if (outputMode === "rich") maybeShowTelemetryNotice(ui);
+    track("workflow started", { workflow: definition.name });
+  }
   try {
     const api = resolveApi(
       definition.auth ?? "none",
@@ -117,9 +127,22 @@ export async function executeCommand<Auth extends AuthPolicy>(
       ...(api ? { api } : {}),
     } as CommandContext<Auth>;
     await definition.run(context);
+    if (tracked)
+      track("workflow finished", {
+        workflow: definition.name,
+        status: "success",
+        duration_ms: Date.now() - startedAt,
+      });
   } catch (error) {
     reportError(ui, outputMode, stdout, error);
     process.exitCode = 1;
+    if (tracked)
+      track("workflow finished", {
+        workflow: definition.name,
+        status: "error",
+        error_code: normalizeError(error).code,
+        duration_ms: Date.now() - startedAt,
+      });
   } finally {
     if (outputMode === "rich" && runtime.waitForPaint !== false) {
       await new Promise((done) => setTimeout(done, 50));

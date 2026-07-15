@@ -40,6 +40,7 @@ import {
   stage,
 } from "./integrate/app";
 import { ensureSkillsCurrent } from "@/core/agent/skills";
+import { setTelemetryTags } from "@/core/telemetry";
 import {
   copyIntegrationPrompt,
   finish,
@@ -51,6 +52,7 @@ import { runCampaignsAndPlacements } from "./integrate/campaigns";
 export const runIntegrate = defineCommand({
   name: "integrate",
   auth: "optional",
+  telemetry: "workflow",
   run: runPipeline,
 });
 
@@ -58,6 +60,7 @@ export function runActionCommand(action: ActionId): DefinedCommand<"optional"> {
   return defineCommand({
     name: action,
     auth: "optional",
+    telemetry: "workflow",
     run: (ctx) => runFlow(ctx, action),
   });
 }
@@ -93,6 +96,7 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
 
   const app = await pickApp(installDir, ctx.interactive);
   if (!app) return;
+  setTelemetryTags({ driver: driver.id, framework: app.framework.integration });
 
   const existing = detectExisting(app);
   if (existing.fullyIntegrated)
@@ -326,6 +330,10 @@ async function runFlow(ctx: CommandContext, forced?: ActionId): Promise<void> {
 
   const app = await pickApp(installDir, ctx.interactive);
   if (!app) return void ui.warn("Cancelled.");
+  setTelemetryTags({
+    driver: driver.driver.id,
+    framework: app.framework.integration,
+  });
 
   const existing = detectExisting(app);
   if (existing.fullyIntegrated)

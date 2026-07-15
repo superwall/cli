@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { VERSION } from "@/constants";
+import { track } from "@/core/telemetry";
 import { ui } from "@/ui";
 import { packagedDir } from "@/util/assets";
 import {
@@ -246,18 +247,23 @@ export interface SyncSkillsResult {
   commands: string[];
 }
 
+export type SkillsSyncTrigger = "login" | "workflow" | "manual";
+
 export async function syncSkills(
-  opts: InstallSkillsOptions = {},
+  opts: InstallSkillsOptions & { trigger?: SkillsSyncTrigger } = {},
 ): Promise<SyncSkillsResult> {
   const pub = await installPublicSkills(opts);
   const bundled = await installBundledSkills(opts);
   const ok = pub.ok && bundled.ok;
-  if (ok && !opts.dryRun)
-    setSkillsSync({
-      cliVersion: VERSION,
-      syncedAt: new Date().toISOString(),
-      sourceSha: (await fetchSourceSha()) ?? undefined,
-    });
+  if (!opts.dryRun) {
+    track("skills synced", { trigger: opts.trigger ?? "manual", ok });
+    if (ok)
+      setSkillsSync({
+        cliVersion: VERSION,
+        syncedAt: new Date().toISOString(),
+        sourceSha: (await fetchSourceSha()) ?? undefined,
+      });
+  }
   return { ok, commands: [pub.command, bundled.command] };
 }
 
@@ -266,7 +272,10 @@ export async function syncSkills(
  * throws on failure (fresh integrations must ship with skills); otherwise this
  * is a quiet refresh that no-ops when the last sync is current.
  */
-export async function ensureSkillsCurrent(required = false): Promise<void> {
+export async function ensureSkillsCurrent(
+  required = false,
+  trigger: SkillsSyncTrigger = "workflow",
+): Promise<void> {
   if (!required && !(await skillsOutOfDate())) return;
   const spin = ui.spinner();
   spin.start(
@@ -274,7 +283,7 @@ export async function ensureSkillsCurrent(required = false): Promise<void> {
       ? "Installing Superwall skills for your agent"
       : "Updating Superwall skills",
   );
-  const { ok } = await syncSkills();
+  const { ok } = await syncSkills({ trigger });
   spin.stop(
     ok
       ? required

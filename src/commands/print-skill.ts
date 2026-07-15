@@ -4,6 +4,7 @@ import { scanProject } from "@/core/project/scan";
 import { detectBilling } from "@/core/project/billing";
 import { FRAMEWORK_REF, type ActionId } from "@/core/agent/actions";
 import { loadBundledSkill, type BundledSkillId } from "@/core/agent/skills";
+import { setTelemetryTags, track } from "@/core/telemetry";
 
 /**
  * `<command> --skill` - print the raw playbook (skill + this project's
@@ -19,6 +20,7 @@ export function runPrintSkill(
     );
     const scan = await scanProject(dir).catch(() => null);
     const app = scan?.apps[0];
+    if (app) setTelemetryTags({ framework: app.framework.integration });
     const frameworkRef = app
       ? FRAMEWORK_REF[app.framework.integration]
       : undefined;
@@ -40,6 +42,7 @@ export function runPrintSkill(
           parts.join("\n\n---\n\n") +
           "\n",
       );
+      track("skill printed", { workflow: actionId });
       return;
     }
 
@@ -85,5 +88,6 @@ export function runPrintSkill(
       return;
     }
     process.stdout.write(body + "\n");
+    track("skill printed", { workflow: actionId });
   };
 }

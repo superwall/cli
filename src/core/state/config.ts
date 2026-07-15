@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -12,6 +13,7 @@ export interface SkillsSync {
 interface Config {
   defaultApp?: Record<string, string>;
   skillsSync?: SkillsSync;
+  telemetry?: { anonymousId?: string; noticeShown?: boolean };
 }
 
 function dir(): string {
@@ -56,5 +58,24 @@ export function getSkillsSync(): SkillsSync | undefined {
 export function setSkillsSync(sync: SkillsSync): void {
   const config = read();
   config.skillsSync = sync;
+  write(config);
+}
+
+export function getAnonymousId(): string {
+  const config = read();
+  if (config.telemetry?.anonymousId) return config.telemetry.anonymousId;
+  const anonymousId = randomUUID();
+  config.telemetry = { ...config.telemetry, anonymousId };
+  write(config);
+  return anonymousId;
+}
+
+export function telemetryNoticeShown(): boolean {
+  return Boolean(read().telemetry?.noticeShown);
+}
+
+export function setTelemetryNoticeShown(): void {
+  const config = read();
+  config.telemetry = { ...config.telemetry, noticeShown: true };
   write(config);
 }
