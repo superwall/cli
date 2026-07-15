@@ -41,6 +41,7 @@
   "scripts": {
     "build": "tsdown",
     "watch": "tsdown --watch",
+    "regen:asc": "tsx scripts/regen-asc-index.ts",
     "dev": "bun bin.ts",
     "test": "tsx --test $(rg --files tests -g '*.test.ts')",
     "link:global": "tsdown && bun link",

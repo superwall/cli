@@ -20,27 +20,6 @@ export const TELEMETRY_KEY =
   process.env.SUPERWALL_TELEMETRY_KEY ??
   "phc_obWpK8cuSfhNkZUKmDByATHp928RHPRD5DoMEDreAHS6";
 
-export const CLI_KEY_SCOPES = [
-  "projects:read",
-  "projects:write",
-  "applications:read",
-  "applications:write",
-  "paywalls:read",
-  "paywalls:write",
-  "campaigns:read",
-  "campaigns:write",
-  "products:read",
-  "products:write",
-  "entitlements:read",
-  "entitlements:write",
-  "assets:read",
-  "assets:write",
-  "access:read",
-  "access:write",
-  "data:read",
-  "app_store_connect:proxy",
-];
-
 export enum Integration {
   swift = "swift",
   expo = "expo",

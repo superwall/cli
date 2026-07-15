@@ -88,6 +88,7 @@ function printHelp(): void {
       "",
       head("App Store Connect commands"),
       row("asc", "The ASC API via Superwall's signed proxy (no .p8 / JWT)"),
+      row("asc docs", "Exact ASC request schema, from Apple's spec (path or search)"),
       row("asc keys", "Manage App Store Connect API keys (list, set, rm)"),
       "",
       head("Other commands"),
@@ -294,12 +295,12 @@ export async function run(): Promise<void> {
           .positional("target", {
             type: "string",
             describe:
-              "get|post|patch|delete, a raw path (/v1/...), or: apps | products | subscriptions | iaps | keys",
+              "get|post|patch|delete, a raw path (/v1/...), or: apps | products | subscriptions | iaps | docs | keys",
           })
           .positional("value", {
             type: "string",
             describe:
-              "Path (for a verb), app bundle id / ASC app id (shortcuts), or list|set|rm (keys)",
+              "Path (for a verb), app bundle id / ASC app id (shortcuts), docs path or search, or list|set|rm (keys)",
           })
           .positional("value2", {
             type: "string",
@@ -315,6 +316,12 @@ export async function run(): Promise<void> {
               type: "string",
               describe: "ASC team id (if the org has more than one connected)",
             },
+            force: {
+              type: "boolean",
+              describe:
+                "Skip request-body schema validation and send as-is (post/patch)",
+            },
+            quiet: { type: "boolean", hidden: true },
             // asc secrets set
             "key-id": { type: "string", describe: "ASC key id (keys set)" },
             issuer: { type: "string", describe: "ASC issuer id (keys set)" },

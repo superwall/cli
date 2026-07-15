@@ -153,7 +153,7 @@ async function createApp(
     };
     if (json) return context.output.data(plan);
     ui.info(
-      `[dry-run] would add ${platform} app "${name}" to ${target ? `project ${target}` : "a new project"}`,
+      `[dry-run] would add ${platformLabel(platform)} app "${name}" to ${target ? `project ${target}` : "a new project"}`,
     );
     return;
   }
@@ -178,7 +178,7 @@ async function createApp(
     }>;
   };
   try {
-    project = (await apiCall(context, `Adding ${platform} app`, () =>
+    project = (await apiCall(context, `Adding ${platformLabel(platform)} app`, () =>
       createApplication(
         api,
         { projectId },
@@ -197,7 +197,7 @@ async function createApp(
       )
     ) {
       throw new Error(
-        `Project ${projectId} already has a ${platform} app - each project allows one app per platform.`,
+        `Project ${projectId} already has a ${platformLabel(platform)} app - each project allows one app per platform.`,
       );
     }
     throw error;
@@ -214,7 +214,7 @@ async function createApp(
     ? ` · \`pk_…${created.public_api_key.slice(-4)}\``
     : "";
   const projectLabel = project.name ? ` in \`${project.name}\`` : "";
-  ui.success(`Added \`${platform}\` app \`${name}\`${projectLabel}${key}`);
+  ui.success(`Added \`${platformLabel(platform)}\` app \`${name}\`${projectLabel}${key}`);
 }
 
 function createOne(

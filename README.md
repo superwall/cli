@@ -100,6 +100,12 @@ superwall asc get /v1/apps
 superwall asc keys set --key-id <id> --issuer <id> --key-file AuthKey.p8
 ```
 
+The proxy is schema-aware. `superwall asc docs /v1/subscriptions post` prints
+the exact request schema (required fields, enums, relationships) from Apple's
+OpenAPI spec, and `asc post`/`asc patch` build the JSON:API body from flat `-d`
+params and reject a malformed body locally before it reaches Apple (`--force`
+skips validation).
+
 ## For agents and scripts
 
 Pass `--json` to any command: stable output shape, structured errors, never

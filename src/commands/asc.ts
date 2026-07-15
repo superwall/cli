@@ -10,9 +10,40 @@ import {
 } from "@/core/api/asc-products";
 import { parseParams } from "@/util/params";
 import { apiCall, emitJson } from "@/util/api-output";
+import {
+  buildAscBody,
+  lookupAscOp,
+  renderAscDocs,
+  validateAscBody,
+} from "@/core/api/asc-schema";
+import {
+  type AscIndex,
+  fetchAscIndex,
+  indexIsStale,
+  readCachedIndex,
+  triggerBackgroundRefresh,
+  writeCachedIndex,
+} from "@/core/api/asc-index";
 import { runAscKeys } from "./keys";
 
 const VERBS = new Set(["get", "post", "patch", "delete"]);
+
+async function ensureAscIndex(ctx: CommandContext): Promise<void> {
+  let cached: AscIndex | undefined;
+  try {
+    cached = readCachedIndex();
+  } catch {
+    cached = undefined;
+  }
+  if (!cached) {
+    const index = await apiCall(ctx, "Fetching App Store Connect schema", () =>
+      fetchAscIndex(),
+    );
+    writeCachedIndex(index);
+    return;
+  }
+  if (indexIsStale(cached)) triggerBackgroundRefresh();
+}
 
 export const runAsc = defineCommand({
   name: "asc",
@@ -20,22 +51,65 @@ export const runAsc = defineCommand({
   output: "both",
   async run(ctx) {
     const target = String(ctx.argv.target ?? "");
+
+    if (target === "docs") {
+      const query = String(ctx.argv.value ?? "");
+      if (query === "refresh") {
+        const quiet = Boolean(ctx.argv.quiet);
+        const index = quiet
+          ? await fetchAscIndex()
+          : await apiCall(ctx, "Updating App Store Connect schema", () =>
+              fetchAscIndex(),
+            );
+        writeCachedIndex(index);
+        if (quiet) return;
+        if (ctx.json) return emitJson(ctx, { specVersion: index.specVersion });
+        process.stdout.write(
+          `App Store Connect schema updated — spec ${index.specVersion}\n`,
+        );
+        return;
+      }
+      await ensureAscIndex(ctx);
+      const md = renderAscDocs(query, ctx.argv.value2 as string | undefined);
+      if (ctx.json) return emitJson(ctx, { markdown: md });
+      process.stdout.write(`${md}\n`);
+      return;
+    }
+
     await requireOrg(ctx.api, ctx.interactive);
 
     if (target === "keys") return runAscKeys(ctx, ctx.api);
-
-    const teamId = await resolveTeam(ctx, ctx.api);
 
     if (VERBS.has(target)) {
       const path = String(ctx.argv.value ?? "");
       if (!path.startsWith("/"))
         throw new Error(`Path must start with "/", e.g. /v1/apps`);
-      const body = parseParams(ctx.argv.d as string[] | undefined);
+      let body = parseParams(ctx.argv.d as string[] | undefined);
+
+      if (target === "post" || target === "patch") {
+        await ensureAscIndex(ctx);
+        const found = lookupAscOp(target, path);
+        if (found) {
+          body = buildAscBody(found.op, target, path, body);
+          const problems = validateAscBody(found.op, target, body);
+          if (problems.length && !ctx.argv.force)
+            throw new Error(
+              `Invalid ${target.toUpperCase()} ${path} body:\n` +
+                problems.map((p) => `  • ${p}`).join("\n") +
+                `\nFix and retry, run \`superwall asc docs ${path} ${target}\`, or pass --force to send as-is.`,
+            );
+        }
+      }
+
+      const teamId = await resolveTeam(ctx, ctx.api);
       const res = await apiCall(ctx, `${target.toUpperCase()} ${path}`, () =>
         ascProxy(ctx.api, teamId, target, path, body),
       );
       return emitJson(ctx, res);
     }
+
+    const teamId = await resolveTeam(ctx, ctx.api);
+
     if (target.startsWith("/")) {
       const res = await apiCall(ctx, `GET ${target}`, () =>
         ascProxy(ctx.api, teamId, "GET", target),
@@ -93,7 +167,7 @@ export const runAsc = defineCommand({
     }
 
     throw new Error(
-      `Unknown "${target}". Use get|post|patch|delete <path>, a raw path, or: apps | products | subscriptions | iaps | keys`,
+      `Unknown "${target}". Use get|post|patch|delete <path>, a raw path, or: apps | products | subscriptions | iaps | docs | keys`,
     );
   },
 });
