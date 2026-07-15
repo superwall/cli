@@ -95,6 +95,7 @@ function printHelp(): void {
       row("login, logout, whoami", "Authenticate the CLI"),
       row("skills", "Install or update the Superwall agent skills"),
       row("doctor", "Check the health of your integration"),
+      row("feedback", "Send feedback about the CLI to the Superwall team"),
       "",
       pc.bold("Flags:"),
       row("--json", "Machine-readable output"),
@@ -267,6 +268,21 @@ export async function run(): Promise<void> {
         }),
       (argv) => {
         return import("@/commands/doctor").then((m) => m.runDoctor(argv));
+      },
+    )
+    .command(
+      "feedback [message]",
+      "Send feedback about the CLI to the Superwall team",
+      (y) =>
+        y
+          .positional("message", {
+            type: "string",
+            describe: "Your feedback (omit to be prompted)",
+          })
+          .example('$0 feedback "migrate crashed on Expo"', "Send feedback")
+          .example('$0 feedback "..." --json', "For agents / automation"),
+      (argv) => {
+        return import("@/commands/feedback").then((m) => m.runFeedback(argv));
       },
     )
     .command(

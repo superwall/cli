@@ -28,12 +28,14 @@ This migrates the **SDK integration**, not the whole product. Checklist:
 - [ ] FULL only: remove RC dependency once verified
 - [ ] Hand back to user: **rebuild paywalls in the editor**, attach products, connect ASC/Play
 
-> **Important - what does NOT migrate:**
+> **Important - what does and does NOT migrate:**
 > - **RC paywall designs** cannot be imported - they are **rebuilt** in the Superwall editor.
 > - **Historical analytics / attribution** stays in RevenueCat.
-> - **Subscriber base:** existing subscribers keep access via device-side **Restore Purchases**
->   because their purchases live with the store, not RevenueCat. Server-side subscription
->   migration from RevenueCat is not available. Do not depend on it.
+> - **Subscriber base:** Superwall provides server-side RevenueCat migration tooling that ports
+>   subscription history and entitlement state - fetch the migration guide (Docs access below)
+>   for the current process before promising specifics. Independently of any data move, existing
+>   subscribers keep access via device-side **Restore Purchases** because their purchases live
+>   with the store.
 
 ## Docs access - fetch live, don't trust baked text
 
@@ -42,6 +44,7 @@ curl -sL https://superwall.com/docs/llms.txt                                    
 curl -sL https://superwall.com/docs/dashboard/guides/migrating-from-revenuecat-to-superwall.md  # migration guide (verified)
 curl -sL https://superwall.com/docs/ios/guides/using-revenuecat.md                       # PAYWALLS-ONLY controller (swap ios→expo/flutter/android)
 curl -sL https://superwall.com/docs/ios/guides/advanced-configuration.md                 # PurchaseController protocol
+curl -sL https://www.revenuecat.com/docs/llms.txt                                        # RevenueCat's own docs index - append .md to any RC docs page to study the existing integration
 ```
 
 ## 1. Concept mapping
@@ -91,8 +94,8 @@ and shows paywalls to people who already pay.
 > 2. **Enable observer mode** - `SuperwallOptions().shouldObservePurchases = true`. Per the doc,
 >    observer mode "solely reports transaction completions" (revenue tracking) - entitlement/
 >    subscriptionStatus is kept current by Superwall's server-side pipeline (App Store Server
->    Notifications + the dashboard product → entitlement mapping), so that mapping MUST exist for
->    gating to work. You then CANNOT call `Superwall.shared.purchase(...)`.
+>    Notifications + the dashboard product → entitlement mapping - confirm against the
+>    observer-mode doc below), so that mapping MUST exist for gating to work. You then CANNOT call `Superwall.shared.purchase(...)`.
 >    (`curl -sL https://superwall.com/docs/ios/guides/advanced/observer-mode.md`)
 > 3. **Push status manually** - after every purchase / restore / expiry, set
 >    `Superwall.shared.subscriptionStatus` yourself (e.g. from a `Transaction.currentEntitlements`
@@ -341,9 +344,9 @@ Peek without presenting: `Superwall.shared.getPresentationResult(forPlacement:)`
 6. FULL: remove `PurchaseController` + the RevenueCat dependency. PAYWALLS-ONLY: keep RC + controller.
 7. Never delete RC dashboard/webhook config until verified in production.
 
-Existing subscribers keep access without any server-side data move - Superwall reads status from the
-device's App Store / Play records after **Restore Purchases**. Dashboard-driven subscription
-migration from RevenueCat is not available.
+Existing subscribers keep access even without a server-side data move - Superwall reads status from
+the device's App Store / Play records after **Restore Purchases**. To port subscription history and
+entitlement state server-side, follow the RevenueCat migration guide (§9) for the current process.
 
 ## 8. Pitfalls
 

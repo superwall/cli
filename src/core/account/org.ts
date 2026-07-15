@@ -1,4 +1,5 @@
 import { ui } from "@/ui";
+import { withSpinner } from "@/ui/spinner";
 import type { SuperwallApi } from "@/core/api/client";
 import {
   listOrganizations,
@@ -22,7 +23,9 @@ export async function requireOrg(
 ): Promise<OrgRef> {
   if (api.org.id) return { id: api.org.id, name: api.org.name };
 
-  const orgs = await listOrganizations(api);
+  const orgs = await withSpinner("Finding your organization", () =>
+    listOrganizations(api),
+  );
   if (orgs.length === 0) {
     throw new Error(
       "Your account has no organization yet - run `superwall login` to create one.",

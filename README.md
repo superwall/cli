@@ -33,6 +33,7 @@ superwall integrate   # set up Superwall in your app from scratch
 superwall migrate     # switch from RevenueCat, Adapty, or Qonversion
 superwall review      # audit an existing setup; add --fix to repair issues
 superwall doctor      # quick health check
+superwall feedback    # tell us what's working and what isn't
 ```
 
 `integrate` works out what kind of app it's looking at, connects it to your

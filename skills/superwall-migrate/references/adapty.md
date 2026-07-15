@@ -21,10 +21,10 @@ This migrates the **SDK integration**, not the whole product. Checklist:
 > - **Adapty paywall designs** (Paywall Builder / remote config) cannot be imported - they are
 >   **rebuilt** in the Superwall editor.
 > - **Historical analytics / attribution** stays in Adapty.
-> - **Subscriber base:** there is **no** server-side subscriber migration from Adapty. Existing
->   subscribers keep access because their purchases live with the store (StoreKit / Play Billing);
->   the app reads them device-side via **Restore Purchases** and maps them to Superwall
->   entitlements. No subscriber data moves between backends.
+> - **Subscriber base:** there is currently no server-side subscriber migration from Adapty.
+>   Existing subscribers keep access because their purchases live with the store (StoreKit /
+>   Play Billing); the app reads them device-side via **Restore Purchases** and maps them to
+>   Superwall entitlements. No subscriber data currently moves between backends.
 
 ## Docs access - fetch live, don't trust baked text
 
@@ -183,7 +183,7 @@ regardless) vs gated (only when entitled). Peek: `Superwall.shared.getPresentati
 4. Replace `getPaywall`/present call sites with `register(placement:)`; replace access-level reads with `subscriptionStatus`.
 5. Build, present each placement, Restore Purchases as an existing subscriber, confirm `subscriptionStatus.isActive`.
 6. FULL: remove controller + Adapty dependency. PAYWALLS-ONLY: keep Adapty + controller.
-7. Never delete Adapty dashboard/webhook config until verified in production. Existing subscribers keep access via device-side Restore Purchases (Superwall reads store records) - no server-side subscriber migration exists.
+7. Never delete Adapty dashboard/webhook config until verified in production. Existing subscribers keep access via device-side Restore Purchases (Superwall reads store records) - no server-side subscriber migration currently exists.
 
 ## 8. Pitfalls
 - **Double-finish / double-charge.** Exactly one SDK finishes transactions. PAYWALLS-ONLY: Adapty owns purchasing via the controller; never also call `Superwall.shared.purchase`. FULL: remove Adapty purchase paths.

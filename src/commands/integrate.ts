@@ -298,13 +298,13 @@ async function runPipeline(ctx: CommandContext): Promise<void> {
     !scope &&
     (canResolveHeadless || (ctx.interactive && (await ensureLogin())))
   ) {
-    const resolved = scopePromise
-      ? await scopePromise
-      : await withSpinner("Finding this app in Superwall", () =>
-          resolveScopeFromKey(SuperwallApi.fromSession(), apiKey).catch(
+    const resolved = await withSpinner("Finding this app in Superwall", () =>
+      scopePromise
+        ? scopePromise
+        : resolveScopeFromKey(SuperwallApi.fromSession(), apiKey).catch(
             () => null,
           ),
-        );
+    );
     if (resolved) {
       scope = resolved;
       bundleId = resolved.bundleId;
