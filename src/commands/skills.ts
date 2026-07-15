@@ -4,6 +4,7 @@ import { defineCommand } from "@/command";
 import {
   SUPERWALL_SKILLS_SOURCE,
   fetchPublicSkills,
+  skillsOutOfDate,
   syncSkills,
 } from "@/core/agent/skills";
 
@@ -14,6 +15,16 @@ export const runSkills = defineCommand({
 
     let skills = normalizeList(ctx.argv.skill);
     const { dryRun, interactive } = ctx;
+    const force = Boolean(ctx.argv.force);
+
+    if (!skills && !dryRun && !force) {
+      const stale = await withSpinner("Checking your skills", skillsOutOfDate);
+      if (!stale) {
+        ui.success("Your Superwall skills are already up to date.");
+        ui.outro("Run `superwall skills --force` to reinstall.");
+        return;
+      }
+    }
 
     if (!skills && !dryRun && interactive) {
       const available = await withSpinner(

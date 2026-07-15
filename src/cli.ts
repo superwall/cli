@@ -77,8 +77,8 @@ function printHelp(): void {
       row("entitlements", "Entitlements (list, create)"),
       row("campaigns", "Campaigns (list, create, placement)"),
       row("paywalls", "Paywalls (list)"),
-      row("orgs", "Organizations (list, use)"),
       row("query [sql]", "Run SQL against your ClickHouse analytics data"),
+      row("orgs", "Organizations (list, use) - only needed with multiple orgs"),
       "",
       head("API commands"),
       row(
@@ -248,6 +248,10 @@ export async function run(): Promise<void> {
           skill: {
             type: "array",
             describe: "Install specific skills by name (default: all)",
+          },
+          force: {
+            type: "boolean",
+            describe: "Reinstall even if skills are already up to date",
           },
           "dry-run": {
             type: "boolean",

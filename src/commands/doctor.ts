@@ -1,5 +1,5 @@
-import pc from "picocolors";
 import { ui } from "@/ui";
+import { THEME, fg } from "@/ui/theme";
 import { defineCommand } from "@/command";
 import { detectDrivers } from "@/core/agent/drivers";
 import { scanProject } from "@/core/project/scan";
@@ -82,7 +82,7 @@ export const runDoctor = defineCommand({
       rows
         .map(
           ([ok, label, value]) =>
-            `${ok ? pc.green("✓") : pc.red("✗")} ${label.padEnd(13)} ${value}`,
+            `${ok ? fg(THEME.primary, "✓") : fg(THEME.alert, "✗")} ${label.padEnd(13)} ${value}`,
         )
         .join("\n"),
     );

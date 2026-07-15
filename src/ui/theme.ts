@@ -2,7 +2,7 @@ import pc from "picocolors";
 
 export const THEME = {
   primary: "#74FFF1",
-  alert: "#FF7474",
+  alert: "#E46671",
 } as const;
 
 function hexToRgb(hex: string): [number, number, number] {
