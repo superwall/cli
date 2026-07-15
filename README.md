@@ -19,7 +19,8 @@ superwall login
 ```
 
 Or run it without installing: `npx superwall`. The package installs both
-`superwall` and the short `sw` command.
+`superwall` and the short `sw` command. Upgrade any time with
+`superwall upgrade` - the CLI also tells you when a new version is out.
 
 `superwall login` opens your browser once and every command shares that
 session. In CI, log in without a browser: `superwall login --api-key <key>`.

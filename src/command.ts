@@ -9,6 +9,7 @@ import {
   writeJson,
 } from "@/output";
 import { maybeShowTelemetryNotice, track } from "@/core/telemetry";
+import { maybeNotifyUpdate, refreshUpdateCheck } from "@/core/update";
 import { selectRenderer } from "@/ui";
 import type { Renderer } from "@/ui/types";
 import { isNonInteractive } from "@/util/env";
@@ -144,6 +145,10 @@ export async function executeCommand<Auth extends AuthPolicy>(
         duration_ms: Date.now() - startedAt,
       });
   } finally {
+    if (outputMode !== "json") {
+      if (definition.name !== "upgrade") maybeNotifyUpdate(ui);
+      refreshUpdateCheck();
+    }
     if (outputMode === "rich" && runtime.waitForPaint !== false) {
       await new Promise((done) => setTimeout(done, 50));
     }

@@ -25,6 +25,7 @@ interface Config {
     org?: { id: string; name: string };
     apps?: Record<string, OnboardedApp>;
   };
+  updateCheck?: { latest?: string; checkedAt?: string };
 }
 
 function dir(): string {
@@ -104,6 +105,21 @@ export function setOnboardedApp(appPath: string, app: OnboardedApp): void {
     ...config.onboarded,
     apps: { ...config.onboarded?.apps, [appPath]: app },
   };
+  write(config);
+}
+
+export function getUpdateCheck():
+  | { latest?: string; checkedAt?: string }
+  | undefined {
+  return read().updateCheck;
+}
+
+export function setUpdateCheck(check: {
+  latest: string;
+  checkedAt: string;
+}): void {
+  const config = read();
+  config.updateCheck = check;
   write(config);
 }
 

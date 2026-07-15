@@ -95,6 +95,7 @@ function printHelp(): void {
       row("login, logout, whoami", "Authenticate the CLI"),
       row("skills", "Install or update the Superwall agent skills"),
       row("doctor", "Check the health of your integration"),
+      row("upgrade", "Update the CLI to the latest version"),
       row("feedback", "Send feedback about the CLI to the Superwall team"),
       "",
       pc.bold("Flags:"),
@@ -272,6 +273,14 @@ export async function run(): Promise<void> {
         }),
       (argv) => {
         return import("@/commands/doctor").then((m) => m.runDoctor(argv));
+      },
+    )
+    .command(
+      "upgrade",
+      "Update the CLI to the latest version",
+      (y) => y,
+      (argv) => {
+        return import("@/commands/upgrade").then((m) => m.runUpgrade(argv));
       },
     )
     .command(

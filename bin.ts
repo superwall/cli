@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { run } from "@/cli";
 import { flushTelemetry } from "@/core/telemetry";
+import { flushUpdateCheck } from "@/core/update";
 
 const NODE_MIN = 20;
 const major = Number(process.versions.node.split(".")[0]);
@@ -14,5 +15,5 @@ if (Number.isFinite(major) && major < NODE_MIN) {
 try {
   await run();
 } finally {
-  await flushTelemetry();
+  await Promise.all([flushTelemetry(), flushUpdateCheck()]);
 }
