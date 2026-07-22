@@ -71,7 +71,7 @@ superwall bootstrap                       # the whole account tree at a glance
 Run SQL directly against your organization's ClickHouse analytics data:
 
 ```bash
-superwall query "SELECT count() FROM transactions"
+superwall query "SELECT count() FROM sw.events_rep"
 superwall query --file mrr.sql
 cat query.sql | superwall query
 ```
