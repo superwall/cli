@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DASHBOARD_URL, VERSION } from "@/constants";
 import { ui } from "@/ui";
 import { defineCommand } from "@/command";
@@ -11,6 +13,7 @@ import { loadSession } from "@/core/auth/storage";
 import { performLoginWithUi } from "./integrate/app";
 import { runAction } from "@/core/agent/run";
 import { saveReport } from "@/core/state/reports";
+import { copyToClipboard } from "@/util/clipboard";
 import { actionById, type ActionContext } from "@/core/agent/actions";
 
 export const runMigrate = defineCommand({
@@ -18,6 +21,7 @@ export const runMigrate = defineCommand({
   auth: "optional",
   async run(ctx) {
     const { installDir, dryRun } = ctx;
+    const plan = Boolean(ctx.argv.plan);
     ui.intro(`Superwall migrate v${VERSION}`);
 
     const drivers = await detectDrivers();
@@ -55,6 +59,28 @@ export const runMigrate = defineCommand({
       return;
     }
     ui.info(`Found \`${provider}\``);
+
+    let mode = plan ? "plan" : "migrate";
+    if (ctx.interactive && !dryRun) {
+      const sel = await ui.select({
+        message: `How do you want to migrate from ${provider}?`,
+        options: [
+          {
+            value: "plan",
+            label: "Plan first",
+            hint: "write a reviewable plan you run yourself",
+          },
+          {
+            value: "migrate",
+            label: "Migrate now",
+            hint: "let the agent do it end-to-end",
+          },
+        ],
+        initialValue: "plan",
+      });
+      if (sel === null) return void ui.warn("Cancelled.");
+      mode = sel;
+    }
 
     let intent = "full";
     if (ctx.interactive && !dryRun) {
@@ -102,13 +128,58 @@ export const runMigrate = defineCommand({
       ui.note(
         [
           `Provider:  ${provider}`,
-          `Mode:      ${intent}`,
+          `Mode:      ${mode === "plan" ? "plan first" : "migrate now"}`,
+          `Scope:     ${intent}`,
           `App:       ${app.name} (${app.framework.name})`,
           `Path:      ${app.path}`,
         ].join("\n"),
         "Migration plan",
       );
       ui.outro("Dry run - no changes made.");
+      return;
+    }
+
+    if (mode === "plan") {
+      const spin = ui.spinner();
+      spin.start(`Planning migration from ${provider}`);
+      const result = await runAction({
+        driver,
+        fallbackDrivers,
+        action: actionById["migrate-plan"],
+        ctx: actionCtx,
+        onEvent: (e) => {
+          if (e.type === "status") spin.message(e.text);
+        },
+      });
+      if (!result.ok || !result.finalText) {
+        spin.stop("Planning stopped early");
+        if (result.finalText)
+          ui.report(stripReport(result.finalText).slice(0, 1500));
+        throw new Error("Migration plan did not complete.");
+      }
+      spin.stop("Migration plan ready");
+      const planText = stripReport(result.finalText);
+      writeFileSync(join(app.path, "sw-migration.md"), planText, "utf8");
+      ui.report(planText);
+
+      const runPrompt = "implement the plan at sw-migration.md";
+      const copied = await copyToClipboard(runPrompt);
+      if (copied) {
+        ui.note(
+          `\`${runPrompt}\` - paste it into Claude Code, Codex, Cursor, or another coding agent.`,
+          "Copied to clipboard",
+        );
+      } else {
+        ui.note(runPrompt, "Copy this into your agent to run the migration");
+      }
+
+      ctx.output.render(
+        blocks.nextSteps([
+          "Review `sw-migration.md`.",
+          "Paste `implement the plan at sw-migration.md` into your agent to execute.",
+        ]),
+        blocks.outro(`Done.  ${DASHBOARD_URL}`),
+      );
       return;
     }
 

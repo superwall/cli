@@ -1,0 +1,13 @@
+<task>
+Produce a reviewable plan to migrate this app from {{provider}} to Superwall - {{goal}}. This is plan-only: DO NOT modify, create, or delete any files. Read the project, then return the plan as your report output - the CLI writes it to disk, not you.
+
+{{skill}}
+
+Analyze how this app integrates {{provider}}, then return a detailed, step-by-step Superwall migration plan. Make it specific to this codebase: the {{provider}}→Superwall mapping, the exact files and call sites to change, the products / entitlements / campaigns / placements to create, and any manual steps left for a human. Do not touch a single file - the plan is your report.
+
+<report>
+A complete step-by-step Superwall migration plan in markdown: the {{provider}}→Superwall mapping, per-file changes with call sites, the products / entitlements / campaigns / placements to create, and remaining manual steps. This report becomes `sw-migration.md`, so write it as the document a human will follow.
+</report>
+
+Emit a [STATUS] before each step.
+</task>

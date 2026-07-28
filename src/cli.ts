@@ -58,7 +58,10 @@ function printHelp(): void {
       "",
       head("Workflow commands"),
       row("integrate", "Set up Superwall in your app (agent-driven)"),
-      row("migrate", "Migrate from RevenueCat / Adapty / Qonversion"),
+      row(
+        "migrate [--plan]",
+        "Migrate from RevenueCat / Adapty / Qonversion; --plan writes a plan first",
+      ),
       row(
         "review [--fix]",
         "Audit an existing Superwall setup; --fix repairs issues",
@@ -190,6 +193,11 @@ export async function run(): Promise<void> {
         y.options({
           ...installDirOption,
           "dry-run": { type: "boolean", describe: "Plan without changes" },
+          plan: {
+            type: "boolean",
+            describe:
+              "Write a reviewable migration plan (sw-migration.md) instead of migrating now",
+          },
           ...skillOption,
         }),
       (argv) => {

@@ -47,6 +47,13 @@ Prefer to drive the agent yourself? Add `--skill` to `integrate`, `migrate`,
 or `review` and the CLI prints the full playbook for your project's framework
 instead of running it — paste it into any agent.
 
+`migrate` starts by asking whether to **plan first** or **migrate now**. Plan
+first is a read-only pass: it writes a reviewable `sw-migration.md` to your
+project root and copies `implement the plan at sw-migration.md` to your
+clipboard, so you can read the plan and then run it through your own agent.
+Migrate now hands the whole migration to the agent end to end. Skip the prompt
+with `superwall migrate --plan` (plan) or leave it off (migrate now).
+
 ## Manage your account
 
 Everything in the dashboard, from the terminal:
