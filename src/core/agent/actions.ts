@@ -25,7 +25,8 @@ export type ActionId =
   | "placements-review"
   | "placements-implement"
   | "dashboard-setup"
-  | "migrate";
+  | "migrate"
+  | "migrate-plan";
 
 export interface ActionContext {
   app: DetectedApp;
@@ -183,22 +184,37 @@ export const ACTIONS: WizardAction[] = [
     requiresOrgKey: false,
     outputMode: "report",
     capabilities: WRITE_CAPABILITIES,
-    vars: (ctx) => {
-      const provider = ctx.billingProvider ?? "the current billing provider";
-      return {
-        provider,
-        goal:
-          ctx.migrateIntent === "paywalls"
-            ? `paywalls only, keep ${provider} for billing`
-            : "full migration",
-        skill: loadBundledSkill(
-          "superwall-migrate",
-          PROVIDER_REF[provider.toLowerCase()],
-        ),
-      };
-    },
+    vars: migrateVars,
+  },
+  {
+    id: "migrate-plan",
+    title: "Plan the migration",
+    hint: "Write a reviewable migration plan you run yourself",
+    runningLabel: "Planning the migration",
+    successLabel: "Migration plan ready",
+    requiresIntegration: false,
+    requiresOrgKey: false,
+    outputMode: "report",
+    capabilities: READ_CAPABILITIES,
+    vars: migrateVars,
   },
 ];
+
+/** Provider + scope + skill vars shared by the migrate and migrate-plan actions. */
+function migrateVars(ctx: ActionContext): Record<string, string> {
+  const provider = ctx.billingProvider ?? "the current billing provider";
+  return {
+    provider,
+    goal:
+      ctx.migrateIntent === "paywalls"
+        ? `paywalls only, keep ${provider} for billing`
+        : "full migration",
+    skill: loadBundledSkill(
+      "superwall-migrate",
+      PROVIDER_REF[provider.toLowerCase()],
+    ),
+  };
+}
 
 export const actionById = Object.fromEntries(
   ACTIONS.map((a) => [a.id, a]),

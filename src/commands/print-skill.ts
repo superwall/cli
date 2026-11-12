@@ -64,7 +64,8 @@ export function runPrintSkill(
       case "dashboard-setup":
         skill = "superwall-dashboard";
         break;
-      case "migrate": {
+      case "migrate":
+      case "migrate-plan": {
         skill = "superwall-migrate";
         const billing = app ? detectBilling(app) : null;
         reference = billing?.revenueCat
